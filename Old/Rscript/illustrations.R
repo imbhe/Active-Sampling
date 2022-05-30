@@ -1,0 +1,157 @@
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#
+# Program info 
+#
+# File name: illustrations.R
+#
+# Description: Calculate and illustrate overshot distribution for simulated and real glance times.
+#
+# Output: 
+#   - Glancing_process.png
+#   - Glance_distribution.png
+#   - Overshot_distribution.png
+#   - Overshot_distribution_simulated.png
+#
+# Author: Henrik Imberg.
+#
+# Date: March 3rd 2020.
+#
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+rm(list = ls())
+
+# Init --------------------------------------------------------------------
+
+
+library(tidyverse)
+
+theme_set(theme_classic())
+theme_update(axis.text = element_text(colour = "black", size = 8),
+             axis.ticks = element_line(colour = "black"),
+             axis.title = element_text(colour = "black", size = 10),
+             legend.text = element_text(colour = "black", size = 8),
+             text = element_text(colour = "black", size = 10))
+
+source("calc_overshot_dist.R")
+
+
+# Illustration on simulated data ------------------------------------------
+
+timestep <- 0.1
+N <- 500
+Nsim <- 10^6
+
+# Generate gamma-ditributed glance times, stored with precision timestep.
+t <- round(1 + rgamma(n = N, shape = 3, rate = 2) / timestep) * timestep 
+
+# Generate gamma-ditributed times for eyes-on-road, stored with precision timestep.
+tseq <- 4 * round(1 + rgamma(n = 2 * N + 1, shape = 3, rate = 2) / timestep) * timestep 
+
+# Combine glances with non-glances.
+tseq[seq(2, 2 * N + 1, 2)] <- t
+tseq <- c(0, cumsum(tseq))
+glance <- rep(c(0, 1), length(tseq) / 2)
+
+df <- tibble(t = tseq, glance = glance)
+
+# Plot simulated glancing process.
+fig1 <- ggplot(df, aes(x = tseq, y = glance)) + 
+  geom_step(direction = "hv") + 
+  coord_cartesian(xlim = c(0, 60)) + 
+  # scale_y_discrete(limits = c(0, 1), labels = c("No", "Yes")) + 
+  labs(x = "Time (s)",
+       y = "Glancing off-road")
+
+# Plot histogram of glancing times.
+fig2 <- ggplot() +
+  geom_bar(aes(x = t), width = timestep) + 
+  geom_vline(aes(xintercept = mean(t)), col = "firebrick", lty = "22", lwd = 1) + 
+  annotate(x = mean(t), y = Inf, label = sprintf("Mean = %.2f s", mean(t)), geom = "text", col = "firebrick", hjust = -0.1, vjust = 1, size = ggplot2:::.pt) + 
+  labs(x = "Time (s)",
+       y = "Count") 
+
+# Estimate and plot overshot distribution.
+df <- tibble(t = t) %>% 
+  count(t)
+od <- calc_overshot_dist(df, timevar = "t", countvar = "n", h = 0.1)
+fig3 <- ggplot(od, aes(x = t, ymin = 0, ymax = prob)) +
+  geom_linerange() + 
+  labs(x = "Time (s)",
+       y = "Probability") 
+
+# Approximate overshot distribution empirically by simulations.
+tot_t <- sum(t)
+cum_t <- cumsum(t)
+lag_cum_t <- lag(cum_t)
+lag_cum_t[1] <- 0
+rand_t <- runif(Nsim, max = tot_t)
+ix <- vapply(rand_t, function(s) which(s >= lag_cum_t & s < cum_t), numeric(1))
+overshot <- apply(cbind(ix, rand_t), 1, function(row) cum_t[row[1]] - row[2])
+
+fig4 <- ggplot() +
+  geom_line(data = od, aes(x = t, y = prob / max(prob), colour = "Exact", linetype = "Exact")) + 
+  stat_density(aes(x = overshot, y = ..scaled.., colour = "Simulated + Kernel density estimate", linetype = "Simulated + Kernel density estimate"), geom = "line") + 
+  scale_colour_brewer(palette = "Set1") + 
+  labs(x = "Time (s)",
+       y = "Scaled probability mass function",
+       colour = NULL,
+       linetype = NULL) +
+  theme(legend.position = c(0.65, 0.9))
+
+
+ggsave("./../Output/SimulatedGlancingProcess.png", fig1, dpi = 1000, width = 90, height = 60, unit = "mm")
+ggsave("./../Output/SimulatedGlanceDist.png", fig2, dpi = 1000, width = 90, height = 60, unit = "mm")
+ggsave("./../Output/SimulatedOvershotDist_exact.png", fig3, dpi = 1000, width = 90, height = 60, unit = "mm")
+ggsave("./../Output/SimulatedOvershotDist_approx.png", fig4, dpi = 1000, width = 90, height = 60, unit = "mm")
+
+
+# Illustration of real data ---------------------------------------------
+
+BaselineGlanceDist <- read_csv("./../Data/BaselineGlanceDist.csv", col_names = FALSE)
+names(BaselineGlanceDist) <- c("t", "count")
+
+osd <- calc_overshot_dist(data = BaselineGlanceDist, timevar = "t", countvar = "count")
+
+# Plot histogram of (positive) glancing times.
+fig5 <- BaselineGlanceDist %>% 
+  filter(t > 0) %>% 
+  ggplot(aes(x = t, ymin = 0, ymax = count / sum(count))) +
+  geom_linerange() + 
+  labs(x = "Time (s)",
+       y = "Count") 
+
+# Estimate and plot overshot distribution.
+od <- calc_overshot_dist(BaselineGlanceDist, timevar = "t", countvar = "count", h = 0.1)
+fig6 <- ggplot(od, aes(x = t, ymin = 0, ymax = prob)) +
+  geom_linerange() + 
+  labs(x = "Time (s)",
+       y = "Probability") 
+
+# Approximate overshot distribution empirically by simulations.
+t <- numeric(0) # Vector of glancing times.
+for ( i in seq_along(BaselineGlanceDist$t[-1])) { t <- c(t, rep(BaselineGlanceDist$t[i + 1], BaselineGlanceDist$count[i + 1]))}
+tot_t <- sum(t)
+cum_t <- cumsum(t)
+lag_cum_t <- lag(cum_t)
+lag_cum_t[1] <- 0
+rand_t <- runif(Nsim, max = tot_t)
+ix <- vapply(rand_t, function(s) which(s >= lag_cum_t & s < cum_t), numeric(1))
+overshot <- apply(cbind(ix, rand_t), 1, function(row) cum_t[row[1]] - row[2])
+
+fig7 <- ggplot() +
+  geom_line(data = od, aes(x = t, y = prob / max(prob), colour = "Exact", linetype = "Exact")) + 
+  stat_density(aes(x = overshot, y = ..scaled.., colour = "Simulated + Kernel density estimate", linetype = "Simulated + Kernel density estimate"), geom = "line") + 
+  scale_colour_brewer(palette = "Set1") + 
+  labs(x = "Time (s)",
+       y = "Scaled probability mass function",
+       colour = NULL,
+       linetype = NULL) +
+  theme(legend.position = c(0.65, 0.9))
+
+fig5
+fig6
+fig7
+
+ggsave("./../Output/BaselineGlanceDist.png", fig5, dpi = 1000, width = 90, height = 60, unit = "mm")
+ggsave("./../Output/BaselineOvershotDist_exact.png", fig6, dpi = 1000, width = 90, height = 60, unit = "mm")
+ggsave("./../Output/BaselineOvershotDist_approx.png", fig7, dpi = 1000, width = 90, height = 60, unit = "mm")

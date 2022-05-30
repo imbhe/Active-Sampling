@@ -1,0 +1,137 @@
+
+# Init --------------------------------------------------------------------
+# install.packages("cowplot")
+# install.packages("fitdistrplus")
+# install.packages("glmnet")
+# install.packages("magrittr")
+# install.packages("randomForest")
+# install.packages("readxl")
+# install.packages("tidyverse")
+
+rm(list = ls())
+
+library("cowplot")
+library("fitdistrplus")
+library("glmnet")
+library("magrittr")
+library("randomForest")
+library("readxl")
+library("tidyverse")
+
+# set.seed(123456)
+source("Rscript/settings.R")
+source("Rscript/prepare_data.R")
+source("Rscript/functions.R")
+
+
+
+# Illustration, single case -----------------------------------------------
+
+set.seed(11111)
+df_with_y <- simulate_sample(ncases = 1) %>%
+  dplyr::rename(glance_prob = "prob")
+head(df_with_y)
+
+df <- df_with_y %>% dplyr::select(-y)
+head(df)
+
+f1 <- ggplot(data = df_with_y) +
+  geom_rect(aes(xmin = after - 0.05, xmax = after + 0.05, ymin = before - 0.05, ymax = before + 0.05, fill = y)) +
+  geom_rect(data = df_with_y %>% filter(y == 0), aes(xmin = after - 0.05, xmax = after + 0.05, ymin = before - 0.05, ymax = before + 0.05), fill = "salmon") +
+  scale_fill_continuous(type = "viridis", labels = scales::number_format(digits = 1)) +
+  coord_equal() +
+  expand_limits(fill = c(0, 25)) +
+  labs(x = "EOFF after tauinv = 0.2 (s)",
+       y = "EOFF before tauinv = 0.2 (s)",
+       fill = "Impact speed (km/h)") +
+  theme(legend.direction = "horizontal",
+        legend.justification = 0.5,
+        legend.position = "bottom",
+        legend.key.height = unit(0.3, "cm"),
+        legend.key.width = unit(0.6, "cm"))
+
+f2 <- ggplot(data = df_with_y) +
+  geom_point(aes(x = after, y = y, colour = before)) +
+  scale_colour_continuous(type = "viridis", labels = scales::number_format(digits = 1)) +
+  lims(y = c(0, 25),
+       fill = c(0, 6.1)) +
+  labs(x = "EOFF after tauinv = 0.2 (s)",
+       y = "Impact speed (km/h)",
+       colour = "EOFF before tauinv = 0.2 (s) ") +
+  theme(legend.direction = "horizontal",
+        legend.justification = 0.5,
+        legend.position = "bottom",
+        legend.key.height = unit(0.3, "cm"),
+        legend.key.width = unit(0.6, "cm"))
+
+plot_grid(f1, f2, ncol = 2, align = "h", axis = "lr")
+ggsave("Output/fig0.png", dpi = 1000, width = 180, height = 90, unit = "mm")
+
+
+# Run.
+res <- active_learning(df, niter = 100, bsize = 1, crit = "mean", plot = TRUE, plotit = c(1, 2, 3, 5, 10,100))
+
+
+
+# # Illustration, multiple cases -----------------------------------------------
+# 
+# set.seed(11111)
+# df_with_y <- simulate_sample(ncases = 6) %>%
+#   dplyr::rename(glance_prob = "prob")
+# head(df_with_y)
+# 
+# df <- df_with_y %>% dplyr::select(-y)
+# head(df)
+# 
+# ptsize <- 20
+# ptsmall <- 16
+# 
+# ggplot(data = df_with_y) +
+#   geom_rect(aes(xmin = after - 0.05, xmax = after + 0.05, ymin = before - 0.05, ymax = before + 0.05, fill = y)) +
+#   geom_rect(data = df_with_y %>% filter(y == 0), aes(xmin = after - 0.05, xmax = after + 0.05, ymin = before - 0.05, ymax = before + 0.05), fill = "salmon") +
+#   scale_fill_continuous(type = "viridis", labels = scales::number_format(digits = 1)) +
+#   coord_equal() +
+#   facet_wrap(~ID, ncol = 3, nrow = 2, labeller = labeller(ID = function(x) sprintf("ID = %s", x))) +
+#   expand_limits(fill = c(0, ceiling(2 * max(df_with_y$y)) / 2)) +
+#   labs(x = "EOFF after tauinv = 0.2 (s)",
+#        y = "EOFF before tauinv = 0.2 (s)",
+#        fill = "Impact speed (km/h)") +
+#   theme(legend.direction = "horizontal",
+#         legend.justification = 0.5,
+#         legend.position = "bottom",
+#         legend.key.height = unit(0.5, "cm"),
+#         legend.key.width = unit(2, "cm"),
+#         axis.text = element_text(size = ptsize, colour = "black", family = "sans"),
+#         legend.text = element_text(size = ptsmall, colour = "black", family = "sans"),
+#         legend.title = element_text(size = ptsmall, colour = "black", family = "sans"),
+#         plot.subtitle = element_text(size = ptsmall, colour = "black", family = "sans", face = "plain", hjust = 0),
+#         plot.title = element_text(size = ptsize, colour = "black", family = "sans", face = "plain", hjust = 0),
+#         text = element_text(size = ptsize, colour = "black", family = "sans"))
+# ggsave("Output/fig100.png", dpi = 1000, width = 270, height = 180, unit = "mm")
+# 
+# 
+# ggplot(data = df_with_y) +
+#   geom_point(aes(x = after, y = y, colour = before)) +
+#   scale_colour_continuous(type = "viridis", labels = scales::number_format(digits = 1)) +
+#   facet_wrap(~ID, ncol = 3, nrow = 2, labeller = labeller(ID = function(x) sprintf("ID = %s", x))) +
+#   lims(y = c(0, ceiling(2 * max(df_with_y$y)) / 2),
+#        fill = c(0, 6.1)) +
+#   labs(x = "EOFF after tauinv = 0.2 (s)",
+#        y = "Impact speed (km/h)",
+#        colour = "EOFF before tauinv = 0.2 (s) ") +
+#   theme(legend.direction = "horizontal",
+#         legend.justification = 0.5,
+#         legend.position = "bottom",
+#         legend.key.height = unit(0.5, "cm"),
+#         legend.key.width = unit(2, "cm"),
+#         axis.text = element_text(size = ptsize, colour = "black", family = "sans"),
+#         legend.text = element_text(size = ptsmall, colour = "black", family = "sans"),
+#         legend.title = element_text(size = ptsmall, colour = "black", family = "sans"),
+#         plot.subtitle = element_text(size = ptsmall, colour = "black", family = "sans", face = "plain", hjust = 0),
+#         plot.title = element_text(size = ptsize, colour = "black", family = "sans", face = "plain", hjust = 0),
+#         text = element_text(size = ptsize, colour = "black", family = "sans"))
+# ggsave("Output/fig101.png", dpi = 1000, width = 270, height = 180, unit = "mm")
+# 
+# 
+# # Run.
+# res <- active_learning(df, niter = 10, bsize = 20, crit = "mean", fcount = 102, plot = TRUE, plotit = c(1, 2, 3, 5, 10))
