@@ -17,8 +17,8 @@ library('R.matlab')
 rm(list = ls())
 
 source_python("sim_data/pickle_reader.py")
-source("Rscript/settings.R")
-source("Rscript/prepare_data.R")
+#source("Rscript/settings.R")
+#source("Rscript/prepare_data.R")
 source("Rscript/functions.R")
 
 # read in deceleration and glances data
@@ -79,7 +79,22 @@ seednum = 2
 set.seed(seednum)
 iteration = 100
 
+# Rename variables, store in dataframe df.
+df <- df_with_y %>% 
+  as_tibble() %>%
+  dplyr::rename(dec = before, 
+                eoff = after,
+                prob = glance_prob,
+                caseID = ID,
+                impact_speed0 = y1,
+                impact_speed1 = y2,
+                injury_risk0 = I, 
+                injury_risk1 = I2) %>% 
+  dplyr::select(caseID, eoff, dec, prob, impact_speed0, impact_speed1, injury_risk0, injury_risk1) 
 
+save(df, file = "Data/glance_dec_data.R")
 
-res <- active_learning(df, optimizefactor = 'Impact_speed', niter = iteration, bsize = 1, crit = "mean", plot = TRUE, plotit = c(1,2,iteration))
+rm(list=setdiff(ls(), c(lsf.str(), "df")))
+
+# res <- active_learning(df, optimizefactor = 'Impact_speed', niter = iteration, bsize = 1, crit = "mean", plot = TRUE, plotit = c(1,2,iteration))
 # Post plots for mse 
