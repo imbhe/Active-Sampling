@@ -1,0 +1,100 @@
+#install.packages("rjson")
+#install.packages("jsonlite")
+#install.packages('reticulate')
+#install.packages('R.matlab')
+#py_install("pandas")
+library("rjson")
+require("reticulate")
+library("cowplot")
+library("fitdistrplus")
+library("glmnet")
+library("magrittr")
+library("randomForest")
+library("readxl")
+library("tidyverse")
+library('HDInterval')
+library('R.matlab')
+rm(list = ls())
+
+source_python("Data/pickle_reader.py")
+#source("Rscript/settings.R")
+#source("Rscript/prepare_data.R")
+source("Rscript/functions.R")
+
+# read in deceleration and glances data
+dec <- readMat("Data/Fitted_deceleration2.mat")
+dec <- dec$out.dec
+dec <- data.frame(dec[,1],dec[,2])
+colnames(dec) <- c('dec','dec_weight')
+
+glance <- readMat("Data/eyeGlanceDistributions_baseline_trans_moved_cspas.mat")
+glance <-  data.frame(glance[[2]],glance[[3]])
+colnames(glance) <- c('glance_duration','glance_weight')
+
+# Get full grid of data from bi-sectional search
+df_with_y <- prepare_df_with_y(loadfile = "Data/test.pkl", glance, dec)
+# If we have treatment data to load
+# df_with_y2 <- prepare_df_with_y(loadfile = "sim_data/new_test02.pkl", glance, dec)
+# If we don't have treatment data to load and just to modify it. Could be improved
+df_with_y2 <- df_with_y
+for (j in unique(df_with_y2$ID)){
+  casedata = df_with_y2[df_with_y2$ID == j,]
+  casedata = casedata[order(casedata$y),]
+  set.seed(j)
+  max_v = max(casedata$y)
+  new_max_v = max_v - abs(rnorm(1,max_v/6,3))
+  #casedata[casedata$y == max_v,]$y = new_max_v
+  for (i in 1:(length(casedata$y)-1)){
+    set.seed(i + j)
+    if (casedata$y[i] >0 & casedata$y[i]< max_v ){
+      casedata$y[i] <- casedata$y[i] - abs(rnorm(1,casedata$y[i]/2,10))
+    } else if (casedata$y[i]== max_v ){
+      casedata$y[i] <- new_max_v
+    }
+
+    if (casedata$y[i]< 0){
+      casedata$y[i] = 0
+    }
+  }
+  df_with_y2[df_with_y2$ID == j,] = casedata
+}
+
+df_with_y2 = df_with_y2[order(df_with_y2$ID,df_with_y2$before,df_with_y2$after),]
+y2 <- df_with_y2$y
+df <- df_with_y %>% dplyr::select(-y)
+
+# Injury risk function
+intercept = -5.35
+delta_v = 0.11
+I = 1./(1+exp(-intercept-delta_v*df_with_y$y/2))
+I2 = 1./(1+exp(-intercept-delta_v*y2/2))
+R = (I-I2)/I
+y1 = df_with_y$y
+dy = y1-y2
+df_with_y <- cbind(df_with_y,y1,y2,I,I2,R,dy)
+strangecases = df_with_y[df_with_y$dy<0,]
+
+# loop for different seednum
+seednum = 2
+set.seed(seednum)
+iteration = 100
+
+# Rename variables, store in dataframe df.
+df <- df_with_y %>% 
+  as_tibble() %>%
+  dplyr::rename(dec = before, 
+                eoff = after,
+                prob = glance_prob,
+                caseID = ID,
+                impact_speed0 = y1,
+                impact_speed1 = y2,
+                injury_risk0 = I, 
+                injury_risk1 = I2) %>% 
+  dplyr::select(caseID, eoff, dec, prob, impact_speed0, impact_speed1, injury_risk0, injury_risk1) 
+
+save(df, file = "Data/glance_dec_data.R")
+
+rm(list=setdiff(ls(), c(lsf.str(), "df")))
+
+# res <- active_learning(df, optimizefactor = 'Impact_speed', niter = iteration, bsize = 1, crit = "mean", plot = TRUE, plotit = c(1,2,iteration))
+# Post plots for mse 
