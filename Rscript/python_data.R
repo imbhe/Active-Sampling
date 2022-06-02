@@ -16,23 +16,23 @@ library('HDInterval')
 library('R.matlab')
 rm(list = ls())
 
-source_python("sim_data/pickle_reader.py")
+source_python("Data/pickle_reader.py")
 #source("Rscript/settings.R")
 #source("Rscript/prepare_data.R")
 source("Rscript/functions.R")
 
 # read in deceleration and glances data
-dec <- readMat("dec_glance_data/Fitted_deceleration2.mat")
+dec <- readMat("Data/Fitted_deceleration2.mat")
 dec <- dec$out.dec
 dec <- data.frame(dec[,1],dec[,2])
 colnames(dec) <- c('dec','dec_weight')
 
-glance <- readMat("dec_glance_data/eyeGlanceDistributions_baseline_trans_moved_cspas.mat")
+glance <- readMat("Data/eyeGlanceDistributions_baseline_trans_moved_cspas.mat")
 glance <-  data.frame(glance[[2]],glance[[3]])
 colnames(glance) <- c('glance_duration','glance_weight')
 
 # Get full grid of data from bi-sectional search
-df_with_y <- prepare_df_with_y(loadfile = "sim_data/test.pkl", glance, dec)
+df_with_y <- prepare_df_with_y(loadfile = "Data/test.pkl", glance, dec)
 # If we have treatment data to load
 # df_with_y2 <- prepare_df_with_y(loadfile = "sim_data/new_test02.pkl", glance, dec)
 # If we don't have treatment data to load and just to modify it. Could be improved
