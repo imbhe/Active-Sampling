@@ -18,9 +18,9 @@
 #
 # target: target of optimisation, only used when sampling_method = "optimised".
 #
-# reduce_simulations_by_logic: Use logical constraints to infer regions with certainty outcomes 
-#                              (no crash or maximal impact speed collision) 
-#                              to avoid sampling in those regions.
+# reduce_simulations_by_logic: Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
+#                              (no crash or maximal impact speed collision) and
+#                              avoid sampling in those regions.
 #
 # num_cases_per_iteration: number of cases to sample from per iteration. 
 #
@@ -41,18 +41,18 @@
 
 active_learning <- function(data, 
                             sampling_method = c("uniform", 
-                                                "propto prob", 
-                                                "propto prob * eoff", 
-                                                "propto prob * abs(acc)", 
-                                                "propto prob * eoff * abs(acc)", 
+                                                "propto eoff_acc_prob", 
+                                                "propto eoff_acc_prob * eoff", 
+                                                "propto eoff_acc_prob * abs(acc)", 
+                                                "propto eoff_acc_prob * eoff * abs(acc)", 
                                                 "optimised"), 
                             target = c("none", 
                                        "impact speed reduction", 
                                        "baseline impact speed distribution", 
-                                       "proportion collisions avoided",
+                                       "crash avoidance",
                                        "injury risk reduction", 
                                        "baseline injury risk distribution"), 
-                            reduce_simulations_by_logic = c(TRUE, FALSE), 
+                            reduce_simulations_by_logic = TRUE, # TRUE or FALSE 
                             num_cases_per_iteration = 1,
                             niter = 500, 
                             nboot = 100) {
@@ -62,7 +62,9 @@ active_learning <- function(data,
   require("glmnet")
   require("magrittr")
   require("randomForest")
+  require("sampling")
   require("tidyverse")
+  
   
   # Check input parameters.
   sampling_method <- match.arg(sampling_method)
@@ -70,7 +72,7 @@ active_learning <- function(data,
   if ( sampling_method != "optimised " ) { 
     target = "none" 
   }
-  
+
   # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
   num_cases_per_iteration <- round(num_cases_per_iteration)
   num_cases_per_iteration <- max(c(num_cases_per_iteration, 1))
@@ -87,6 +89,7 @@ active_learning <- function(data,
   source("Rscript/safe_cv_glmnet.R")
   source("Rscript/safe_random_forest.R")
   source("Rscript/update_predictions.R")
+  
   
   # To store results.
   res <- NULL
@@ -221,12 +224,12 @@ active_learning <- function(data,
     
     # Estimate target quantities.
     crashes <- labelled %>% filter(impact_speed0 > 0)
-    effective_sample_size0 <- effective_sample_size1 <- nrow(labelled)
-    number_simulations0 <- sum(labelled$sim_count0)
-    number_simulations1 <- sum(labelled$sim_count1)
+    effective_number_simulations0 <- effective_number_simulations1 <- nrow(labelled)
+    actual_number_simulations0 <- sum(labelled$sim_count0)
+    actual_number_simulations1 <- sum(labelled$sim_count1)
     boot <- boot(crashes, statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), R = nboot)
-    est <- boot$t0
-    se <- apply(boot$t, 2 , sd) # Standard error of estimator.
+    est <- boot$t0 # Estimates.
+    se <- apply(boot$t, 2 , sd) # Standard error of estimates.
     sqerr <- (est - ground_truth)^2 # Squared error with respect to ground truth.
     names(se) <- paste0(names(est), "_se")
     names(sqerr) <- paste0(names(est), "_sqerr")
