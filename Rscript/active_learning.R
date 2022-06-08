@@ -2,7 +2,7 @@
 #
 # active_learning.R
 #
-# INPUT
+# INPUT:
 #
 # data: input dataset with variables
 #   - 'caseID': ID for original crash event. 
@@ -14,36 +14,30 @@
 #   - 'injury_risk0': injury risk in baseline scenario.
 #   - 'injury_risk1': injury risk in counter factual scenario (i.e. with counter measure such as AEB).                           
 #
-# sampling_criterion: importance sampling scheme (uniform, propto 'size', or optimised).
-#
-# num_cases_per_iteration: number of cases to sample from per iteration. 
+# sampling_method: importance sampling scheme (uniform, proportional to 'size', or optimised).
 #
 # target: target of optimisation, only used when sampling_method = "optimised".
 #
-# use_certainty_selection_logic: Use logical constraints to infer regions with certainty outcomes 
-#                                (no crash or maximal impact speed collision) 
-#                                to avoid sampling in those regions.
+# reduce_simulations_by_logic: Use logical constraints to infer regions with certainty outcomes 
+#                              (no crash or maximal impact speed collision) 
+#                              to avoid sampling in those regions.
 #
-# maxiter: maximal number of iterations.
+# num_cases_per_iteration: number of cases to sample from per iteration. 
+#
+# niter: number of iterations.
 #
 # nboot: number of bootstrap replicates used to calculate confidence intervals.
-#
-#
-#
-# STOPPING CRITERION: the algorithm terminates when the first or these two criteria is met:
-#    - average half-width of confidence interval for target quantity past M iterations is less than delta, or
-#    - maximal number of iterations (maxiter) reached. 
-#
 #
 #
 # OUTPUT: 
 #
 # List of three datasets:
-#   - all: all 'labelled' observations (i.e. for which the outcome has been observed).
+#   - results: meta information of simulation, iteration history, estimates with standard errors and squared errors.
+#   - labelled: all labelled data points. 
 #   - crashes: all generated crashes. 
-#   - noncrashes: all generated non-crashes.
 #
 ################################################################################
+
 
 active_learning <- function(data, 
                             sampling_method = c("uniform", 
@@ -52,35 +46,30 @@ active_learning <- function(data,
                                                 "propto prob * abs(acc)", 
                                                 "propto prob * eoff * abs(acc)", 
                                                 "optimised"), 
-                            target = c("impact speed reduction", 
+                            target = c("none", 
+                                       "impact speed reduction", 
                                        "baseline impact speed distribution", 
                                        "proportion collisions avoided",
                                        "injury risk reduction", 
                                        "baseline injury risk distribution"), 
                             reduce_simulations_by_logic = c(TRUE, FALSE), 
                             num_cases_per_iteration = 1,
-                            maxiter = 500, 
+                            niter = 500, 
                             nboot = 100) {
   
   # Make sure packages are loaded.
+  require("boot")
+  require("glmnet")
   require("magrittr")
   require("randomForest")
   require("tidyverse")
   
   # Check input parameters.
-  sampling_method <- match.arg(sampling_method, 
-                               c("uniform", 
-                                 "propto prob", 
-                                 "propto prob * eoff", 
-                                 "propto prob * abs(acc)", 
-                                 "propto prob * eoff * abs(acc)", 
-                                 "optimised"))
-  
-  target <- match.arg(target, c("impact speed reduction", 
-                                "baseline impact speed distribution", 
-                                "proportion collisions avoided",
-                                "injury risk reduction", 
-                                "baseline injury risk distribution") )
+  sampling_method <- match.arg(sampling_method)
+  target <- match.arg(target)
+  if ( sampling_method != "optimised " ) { 
+    target = "none" 
+  }
   
   # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
   num_cases_per_iteration <- round(num_cases_per_iteration)
@@ -90,6 +79,7 @@ active_learning <- function(data,
   
   # Load helper functions.
   source("Rscript/calculate_sampling_scheme.R")
+  source("Rscript/estimate_targets.R")
   source("Rscript/find_crashes.R")
   source("Rscript/find_max_impact_crashes.R")
   source("Rscript/find_non_crashes.R")
@@ -121,7 +111,7 @@ active_learning <- function(data,
   # Iterate
   new_sample <- labelled 
   collision_counter <- 1
-  for ( i in 1:maxiter ) {
+  for ( i in 1:niter ) {
     
     print(sprintf("Iteration %d", i))
     
@@ -240,15 +230,19 @@ active_learning <- function(data,
     sqerr <- (est - ground_truth)^2 # Squared error with respect to ground truth.
     names(se) <- paste0(names(est), "_se")
     names(sqerr) <- paste0(names(est), "_sqerr")
-    
-    newres <- tibble(iter = i, 
-                     neff = effective_sample_size0, 
-                     nsim = number_simulations0 + number_simulations1, 
-                     nsim0 = number_simulations0, 
-                     nsim1 = number_simulations1) %>% 
-      add_column(as_tibble(as.list(est))) %>% 
-      add_column(as_tibble(as.list(se)))  %>% 
-      add_column(as_tibble(as.list(sqerr)))
+
+    newres <- tibble(samping_method = sampling_method,
+                     target = target,
+                     reduce_simulations_by_logic = reduce_simulations_by_logic,
+                     num_cases_per_iteration = num_cases_per_iteration) %>% # Meta-information.
+      add_column(iter = i, 
+                 neff = effective_sample_size0, 
+                 nsim = number_simulations0 + number_simulations1, 
+                 nsim0 = number_simulations0, 
+                 nsim1 = number_simulations1) %>% # Iteration history.
+      add_column(as_tibble(as.list(est))) %>% # Estimates.
+      add_column(as_tibble(as.list(se)))  %>% # Standard errors.
+      add_column(as_tibble(as.list(sqerr))) # Squared errors.
     
     if ( is.null(res) ) {
       res <- newres
@@ -264,6 +258,8 @@ active_learning <- function(data,
     
   } # End active learning.
 
-  return(res)
+  return(list(results = res, 
+              labelled = labelled, 
+              crashes = labelled %>% filter(impact_speed0 > 0)))
   
 }

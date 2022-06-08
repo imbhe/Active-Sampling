@@ -1,24 +1,31 @@
 # Calculate sampling scheme.
-calculate_sampling_scheme <- function(data, sampling_method, target, num_cases) {
+calculate_sampling_scheme <- function(data,
+                                      sampling_method = c("uniform", 
+                                                                "propto prob", 
+                                                                "propto prob * eoff", 
+                                                                "propto prob * abs(acc)", 
+                                                                "propto prob * eoff * abs(acc)", 
+                                                                "optimised"), 
+                                      target = c("none", 
+                                                 "impact speed reduction", 
+                                                 "baseline impact speed distribution", 
+                                                 "proportion collisions avoided",
+                                                 "injury risk reduction", 
+                                                 "baseline injury risk distribution"),
+                                      num_cases) {
   
-  sampling_method <- match.arg(sampling_method, 
-                               c("uniform", 
-                                 "propto to eoff_acc_prob", 
-                                 "propto eoff_acc_prob * eoff", 
-                                 "propto eoff_acc_prob * abs(acc)", 
-                                 "propto eoff_acc_prob * eoff * abs(acc)", 
-                                 "optimised"))
+  # Check input parameters.
+  sampling_method <- match.arg(sampling_method)
+  target <- match.arg(target)
+  if ( sampling_method != "optimised " ) { 
+    target = "none" 
+  }
   
-  target <- match.arg(target, c("impact speed reduction", 
-                                "baseline impact speed distribution", 
-                                "proportion collisions avoided",
-                                "injury risk reduction", 
-                                "baseline injury risk distribution"))
-  
-  # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
+  # num_cases should be integer between 1 and number of cases in input data set.
   num_cases <- round(num_cases)
   num_cases <- max(c(num_cases, 1))
   num_cases <- min(c(num_cases, length(unique(data$caseID))))
+  
   
   
   # Calculate 'size'.
