@@ -1,0 +1,27 @@
+{
+    "id": "4A9A23F0",
+    "path": "~/GitHub/Glance_sampling/Rscript/update_predictions.R",
+    "project_path": "Rscript/update_predictions.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1654174140551.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "tempName": "Untitled1",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "182,6",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1654600091,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1654600091933,
+    "read_only": false,
+    "read_only_alternatives": []
+}
