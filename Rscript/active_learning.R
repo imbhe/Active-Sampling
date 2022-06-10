@@ -42,9 +42,9 @@
 active_learning <- function(data, 
                             sampling_method = c("uniform", 
                                                 "propto eoff_acc_prob", 
-                                                "propto eoff_acc_prob * eoff", 
-                                                "propto eoff_acc_prob * abs(acc)", 
-                                                "propto eoff_acc_prob * eoff * abs(acc)", 
+                                                "propto eoff_acc_prob * eoff * maximpact0", 
+                                                "propto eoff_acc_prob * abs(acc) * maximpact0", 
+                                                "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
                                                 "optimised"), 
                             target = c("none", 
                                        "impact speed reduction", 
@@ -69,10 +69,17 @@ active_learning <- function(data,
   # Check input parameters.
   sampling_method <- match.arg(sampling_method)
   target <- match.arg(target)
-  if ( sampling_method != "optimised " ) { 
+  
+  # target should be "none" when sampling_method not equal to "optimised".
+  if ( sampling_method != "optimised" ) { 
     target = "none" 
+  } 
+  
+  # Target must be specified if sampling_method = "optimised".
+  if ( sampling_method == "optimised" & target == "none" ) {
+    stop("Error in active_learing. sampling_method = optimised and target = none not allowed.")
   }
-
+  
   # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
   num_cases_per_iteration <- round(num_cases_per_iteration)
   num_cases_per_iteration <- max(c(num_cases_per_iteration, 1))
@@ -182,7 +189,7 @@ active_learning <- function(data,
     
     
     # Calculate sampling probabilities. 
-    prob <- calculate_sampling_scheme(unlabelled, sampling_method, target, num_cases_per_iteration)
+    prob <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, target, num_cases_per_iteration)
     
     # Sample cases.
     cases <- as.numeric(names(table(unlabelled$caseID)))
@@ -239,10 +246,12 @@ active_learning <- function(data,
                      reduce_simulations_by_logic = reduce_simulations_by_logic,
                      num_cases_per_iteration = num_cases_per_iteration) %>% # Meta-information.
       add_column(iter = i, 
-                 neff = effective_sample_size0, 
-                 nsim = number_simulations0 + number_simulations1, 
-                 nsim0 = number_simulations0, 
-                 nsim1 = number_simulations1) %>% # Iteration history.
+                 neff0 = effective_number_simulations0, 
+                 neff1 = effective_number_simulations1, 
+                 neff_tot = effective_number_simulations0 + effective_number_simulations1,
+                 nsim0 = actual_number_simulations0, 
+                 nsim1 = actual_number_simulations1, 
+                 nsim_tot = actual_number_simulations0 + actual_number_simulations1) %>% # Iteration history.
       add_column(as_tibble(as.list(est))) %>% # Estimates.
       add_column(as_tibble(as.list(se)))  %>% # Standard errors.
       add_column(as_tibble(as.list(sqerr))) # Squared errors.
