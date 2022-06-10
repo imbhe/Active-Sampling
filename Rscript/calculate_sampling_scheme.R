@@ -11,8 +11,7 @@ calculate_sampling_scheme <- function(unlabelled,
                                                  "impact speed reduction", 
                                                  "baseline impact speed distribution", 
                                                  "crash avoidance",
-                                                 "injury risk reduction", 
-                                                 "baseline injury risk distribution"),
+                                                 "injury risk reduction"),
                                       num_cases) {
   
   # Check input parameters.
@@ -79,17 +78,13 @@ calculate_sampling_scheme <- function(unlabelled,
 
     } else if ( target == "crash avoidance" ) {
       
-      size <- with(unlabelled, sqrt(collision_prob1_pred))
+      size <- with(unlabelled, sqrt(1 - collision_prob1_pred))
 
     } else if ( target == "injury risk reduction" ) {
       
       size <- with(unlabelled, abs(injury_risk1_pred - injury_risk0_pred))
       
-    } else if ( target == "baseline injury risk distribution" ) {
-      
-      size <- with(unlabelled, abs(injury_risk1_pred - injury_risk0_pred))
-
-    }
+    } 
     
     size[size <= 0] <- min(size[size > 0]) # Zeros not allowed.
     
