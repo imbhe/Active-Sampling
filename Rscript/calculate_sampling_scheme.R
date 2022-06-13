@@ -8,10 +8,11 @@ calculate_sampling_scheme <- function(unlabelled,
                                                           "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
                                                           "optimised"), 
                                       target = c("none", 
-                                                 "impact speed reduction", 
                                                  "baseline impact speed distribution", 
+                                                 "impact speed reduction", 
                                                  "crash avoidance",
-                                                 "injury risk reduction"),
+                                                 "injury risk reduction",
+                                                 "injury risk reduction, stratified"),
                                       num_cases) {
   
   # Check input parameters.
@@ -88,12 +89,32 @@ calculate_sampling_scheme <- function(unlabelled,
       
       size <- with(unlabelled, injury_risk0_pred - injury_risk1_pred)
       
+    } else if ( target == "injury risk reduction, stratified" ) {
+      
+      nStrata <- 10
+      sizeMat <- matrix(0, nrow = nrow(unlabelled), ncol = nStrata)
+      for ( i in 1:nStrata ) {
+        sizeMat[, i] <- with(unlabelled, ifelse(impact_speed0_pred > 10 * (i - 1) & impact_speed0_pred <= 10 * i, sqrt(collision_prob0_pred) * eoff_acc_prob * pmax(injury_risk0_pred - injury_risk1_pred, 0), rep(0, length(injury_risk0_pred))))
+      }
+      
+      # Pooled 'size' is root sum of squares of standardised individual 'sizes'.
+      # Without standardisation: produces same result as non-stratified version.
+      size2 <- sizeMat^2
+      csum <- colSums(size2)
+      ix <- which(csum > 0)
+      size <- sqrt(rowSums(scale(size2[, ix], center = FALSE, scale = csum[ix]))) 
+      
+      # To account for probability of (deceleration, glance) pair and probability of crash in baseline scenario. 
+      # Note: use division here since we multiple both on row 98 and 118.
+      size <- with(unlabelled, (sqrt(collision_prob0_pred) * eoff_acc_prob)^(-1) * size)
+      size[is.na(size)] <- 0
+      
     } 
     
-    size[size <= 0] <- min(size[size > 0]) # Zeroes not allowed.
+    size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
     
     # Account for probability of (deceleration, glance) pair and probability of crash in baseline scenario.
-    size <- with(unlabelled, sqrt(collision_prob0_pred) * eoff_acc_prob * size )
+    size <- with(unlabelled, sqrt(collision_prob0_pred) * eoff_acc_prob * size)
     
   } else {
     

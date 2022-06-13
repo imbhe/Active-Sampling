@@ -59,7 +59,7 @@ update_predictions <- function(labelled, unlabelled, yvar) {
   
   # Fractional polynomial LASSO regression.
   ix <- which(y > 0 & y < ymax)
-  nfolds <- ifelse(length(ix) < 50, length(ix), 10)
+  nfolds <- ifelse(length(ix) < 10, length(ix), 10)
   
   options(warn = -1)
   lasso <- safe_cv_glmnet(X[ix, ], y[ix], grouped = FALSE, nfolds = nfolds)
