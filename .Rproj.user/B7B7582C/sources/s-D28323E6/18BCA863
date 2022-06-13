@@ -1,27 +1,27 @@
 {
-    "id": "8D81DC13",
-    "path": "~/GitHub/Glance_sampling/Rscript/calculate_sampling_scheme.R",
-    "project_path": "Rscript/calculate_sampling_scheme.R",
+    "id": "18BCA863",
+    "path": "~/GitHub/Glance_sampling/Rscript/update_predictions.R",
+    "project_path": "Rscript/update_predictions.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1654688434103.0,
+    "created": 1655109198120.0,
     "source_on_save": false,
-    "relative_order": 4,
+    "relative_order": 3,
     "properties": {
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "110,6",
-        "scrollLine": "90"
+        "cursorPosition": "157,5",
+        "scrollLine": "140"
     },
     "folds": "",
-    "lastKnownWriteTime": 1655107812,
+    "lastKnownWriteTime": 1655103172,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1655107812684,
+    "last_content_update": 1655103172,
     "read_only": false,
     "read_only_alternatives": []
 }

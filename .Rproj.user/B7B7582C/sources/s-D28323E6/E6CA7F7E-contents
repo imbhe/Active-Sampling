@@ -1,0 +1,7 @@
+labelled2 <- labelled %>%
+  mutate(new_wt = 1) %>% # Re-query labelled data points with probability 1. 
+  add_row(new_sample) %>%
+  mutate(sampling_weight = sampling_weight + any(new_sample$impact_speed0 > 0) * 
+           (new_wt - sampling_weight) / collision_counter, # Update sampling weights if crash was generated.
+         final_weight = eoff_acc_prob * sampling_weight) %>%
+  dplyr::select(-new_wt)

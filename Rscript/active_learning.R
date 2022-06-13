@@ -216,7 +216,8 @@ active_learning <- function(data,
     labelled <- labelled %>%
       mutate(new_wt = 1) %>% # Re-query labelled data points with probability 1. 
       add_row(new_sample) %>%
-      mutate(sampling_weight = sampling_weight + (new_wt - sampling_weight) / collision_counter, 
+      mutate(sampling_weight = sampling_weight + any(new_sample$impact_speed0 > 0) * 
+               (new_wt - sampling_weight) / collision_counter, # Update sampling weights if crash was generated. 
              final_weight = eoff_acc_prob * sampling_weight) %>%
       dplyr::select(-new_wt)
     
@@ -262,7 +263,7 @@ active_learning <- function(data,
     
     
     # Increase counter if at least one new crash has been generated in baseline scenario.
-    collision_counter <- collision_counter + (any(new_sample$impact_speed0 > 0))
+    collision_counter <- collision_counter + any(new_sample$impact_speed0 > 0)
     
     
   } # End active learning.
