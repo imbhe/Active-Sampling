@@ -137,7 +137,7 @@ update_predictions <- function(labelled, unlabelled, yvar) {
  
   # Random forest.
   options(warn = -1)
-  rf <- randomForest(as.factor(y == ymax) ~ eoff + acc, data = labelled)
+  rf <- safe_random_forest(as.factor(y == ymax) ~ eoff + acc, data = labelled)
   options(warn = defaultW)
   
   if ( !is.null(rf) ) { # If able to fit model: calculate predictions.

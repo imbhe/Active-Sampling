@@ -122,9 +122,6 @@ active_learning <- function(data,
   collision_counter <- 1
   for ( i in 1:niter ) {
     
-    print(sprintf("Iteration %d", i))
-    
-    
     # If reduce_simulations_by_logic = TRUE:
     if ( reduce_simulations_by_logic & nrow(new_sample) > 0 ) {
       
