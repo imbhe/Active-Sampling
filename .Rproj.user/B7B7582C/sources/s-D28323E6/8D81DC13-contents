@@ -2,11 +2,11 @@
 calculate_sampling_scheme <- function(unlabelled,
                                       labelled,
                                       sampling_method = c("uniform", 
-                                                                "propto eoff_acc_prob", 
-                                                                "propto eoff_acc_prob * eoff * maximpact0", 
-                                                                "propto eoff_acc_prob * abs(acc) * maximpact0", 
-                                                                "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
-                                                                "optimised"), 
+                                                          "propto eoff_acc_prob", 
+                                                          "propto eoff_acc_prob * eoff * maximpact0", 
+                                                          "propto eoff_acc_prob * abs(acc) * maximpact0", 
+                                                          "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                                          "optimised"), 
                                       target = c("none", 
                                                  "impact speed reduction", 
                                                  "baseline impact speed distribution", 
@@ -70,23 +70,27 @@ calculate_sampling_scheme <- function(unlabelled,
     
     if ( target == "impact speed reduction" ) {
       
-      size <- with(unlabelled, abs(impact_speed1_pred - impact_speed0_pred))
+      size <- with(unlabelled, impact_speed0_pred - impact_speed1_pred)
 
     } else if ( target == "baseline impact speed distribution" ) {
       
-      size <- with(unlabelled, abs(impact_speed1_pred - impact_speed0_pred))
-
+      est <- estimate_targets(labelled, weightvar = "final_weight")
+      Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
+                  est["impact_speed0_logSD"])
+      size <- sqrt(Z^2 + 0.25 * (1 + Z^2)^2)
+      size[is.infinite(size)] <- 0
+      
     } else if ( target == "crash avoidance" ) {
       
       size <- with(unlabelled, sqrt(1 - collision_prob1_pred))
 
     } else if ( target == "injury risk reduction" ) {
       
-      size <- with(unlabelled, abs(injury_risk1_pred - injury_risk0_pred))
+      size <- with(unlabelled, injury_risk0_pred - injury_risk1_pred)
       
     } 
     
-    size[size <= 0] <- min(size[size > 0]) # Zeros not allowed.
+    size[size <= 0] <- min(size[size > 0]) # Zeroes not allowed.
     
     # Account for probability of (deceleration, glance) pair and probability of crash in baseline scenario.
     size <- with(unlabelled, sqrt(collision_prob0_pred) * eoff_acc_prob * size )
