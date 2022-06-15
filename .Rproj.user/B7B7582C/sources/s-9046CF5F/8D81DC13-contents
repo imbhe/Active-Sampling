@@ -6,8 +6,6 @@ calculate_sampling_scheme <- function(unlabelled,
                                                           "optimised"), 
                                       proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
                                                         "propto eoff_acc_prob", 
-                                                        "propto eoff_acc_prob * eoff * maximpact0", 
-                                                        "propto eoff_acc_prob * abs(acc) * maximpact0", 
                                                         "propto eoff_acc_prob * eoff * abs(acc) * maximpact0"), 
                                       target = c("NA", # Only used when sampling_method = "optimised", "NA" otherwise.
                                                  "baseline impact speed distribution", 

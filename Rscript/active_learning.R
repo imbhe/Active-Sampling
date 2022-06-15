@@ -45,8 +45,6 @@ active_learning <- function(data,
                                                 "optimised"), 
                             proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
                                               "propto eoff_acc_prob", 
-                                              "propto eoff_acc_prob * eoff * maximpact0", 
-                                              "propto eoff_acc_prob * abs(acc) * maximpact0", 
                                               "propto eoff_acc_prob * eoff * abs(acc) * maximpact0"), 
                             target = c("NA", # Only used when sampling_method = "optimised", "NA" otherwise.
                                        "baseline impact speed distribution", 
@@ -257,6 +255,7 @@ active_learning <- function(data,
     names(sqerr) <- paste0(names(est), "_sqerr")
 
     newres <- tibble(samping_method = sampling_method,
+                     proposal_dist = proposal_dist,
                      target = target,
                      reduce_simulations_by_logic = reduce_simulations_by_logic,
                      num_cases_per_iteration = num_cases_per_iteration) %>% # Meta-information.
