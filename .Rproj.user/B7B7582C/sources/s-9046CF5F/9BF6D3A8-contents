@@ -41,21 +41,24 @@
 
 active_learning <- function(data, 
                             sampling_method = c("uniform", 
-                                                "propto eoff_acc_prob", 
-                                                "propto eoff_acc_prob * eoff * maximpact0", 
-                                                "propto eoff_acc_prob * abs(acc) * maximpact0", 
-                                                "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                                "importance sampling", 
                                                 "optimised"), 
-                            target = c("none", 
+                            proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
+                                              "propto eoff_acc_prob", 
+                                              "propto eoff_acc_prob * eoff * maximpact0", 
+                                              "propto eoff_acc_prob * abs(acc) * maximpact0", 
+                                              "propto eoff_acc_prob * eoff * abs(acc) * maximpact0"), 
+                            target = c("NA", # Only used when sampling_method = "optimised", "NA" otherwise.
                                        "baseline impact speed distribution", 
                                        "impact speed reduction", 
                                        "crash avoidance",
-                                       "injury risk reduction", 
-                                       "injury risk reduction, stratified"), 
-                            reduce_simulations_by_logic = TRUE, # TRUE or FALSE 
+                                       "injury risk reduction",
+                                       "injury risk reduction, stratified"),
+                            reduce_simulations_by_logic = TRUE, # TRUE or FALSE. 
                             num_cases_per_iteration = 1,
                             niter = 500, 
-                            nboot = 100) {
+                            nboot = 100, 
+                            verbose = FALSE) { # TRUE or FALSE.
   
   # Make sure packages are loaded.
   require("boot")
@@ -68,22 +71,33 @@ active_learning <- function(data,
   
   # Check input parameters.
   sampling_method <- match.arg(sampling_method)
+  proposal_dist <- match.arg(proposal_dist)
   target <- match.arg(target)
   
-  # target should be "none" when sampling_method not equal to "optimised".
-  if ( sampling_method != "optimised" ) { 
-    target = "none" 
+  # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
+  if ( sampling_method != "importance sampling" ) { 
+    proposal_dist <- "NA"
   } 
   
-  # Target must be specified if sampling_method = "optimised".
-  if ( sampling_method == "optimised" & target == "none" ) {
-    stop("Error in active_learing. sampling_method = optimised and target = none not allowed.")
+  # proposal_dist must be specified if sampling_method = "importance sampling".
+  if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
+    stop("Error in calculate_sampling_scheme. sampling_method = importance sampling and proposal_dist = none not allowed.")
   }
   
-  # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
-  num_cases_per_iteration <- round(num_cases_per_iteration)
-  num_cases_per_iteration <- max(c(num_cases_per_iteration, 1))
-  num_cases_per_iteration <- min(c(num_cases_per_iteration, length(unique(data$caseID))))
+  # target should be "NA" when sampling_method not equal to "optimised".
+  if ( sampling_method != "optimised" ) { 
+    target <- "NA" 
+  } 
+  
+  # target must be specified if sampling_method = "optimised".
+  if ( sampling_method == "optimised" & target == "NA" ) {
+    stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = none not allowed.")
+  }
+  
+  # num_cases should be integer between 1 and number of cases in input unlabelled set.
+  num_cases <- round(num_cases)
+  num_cases <- max(c(num_cases, 1))
+  num_cases <- min(c(num_cases, length(unique(unlabelled$caseID))))
   
   
   # Load helper functions.
@@ -106,12 +120,11 @@ active_learning <- function(data,
   
  
   # Initialise on grid.
-  grid <- crossing(eoff = range(data$eoff), acc = range(data$acc)) %>% # Corner points. 
-    add_row(eoff = quantile(data$eoff, 0.5, type = 1), 
-            acc = quantile(data$acc, 0.5, type = 1)) %>% # Add centre point.
+  grid <- tibble(eoff = min(data$eoff), acc = min(data$acc)) %>% 
+    add_row(eoff = max(data$eoff), acc = max(data$acc)) %>% 
     mutate(sim_count0 = 1, 
            sim_count1 = 1)
-  
+ 
   init <- initialise_grid(data, grid)
   
   labelled <- init$labelled
@@ -122,6 +135,10 @@ active_learning <- function(data,
   new_sample <- labelled 
   collision_counter <- 1
   for ( i in 1:niter ) {
+    
+    # Print iteration number if verbose = TRUE.
+    if ( verbose ) { print(sprintf("Iteration %d", i)) }
+    
     
     # If reduce_simulations_by_logic = TRUE:
     if ( reduce_simulations_by_logic & nrow(new_sample) > 0 ) {
@@ -186,7 +203,7 @@ active_learning <- function(data,
     
     
     # Calculate sampling probabilities. 
-    prob <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, target, num_cases_per_iteration)
+    prob <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
     
     # Sample cases.
     cases <- as.numeric(names(table(unlabelled$caseID)))
@@ -214,7 +231,7 @@ active_learning <- function(data,
     
     # Update labelled and unlabelled sets.
     labelled <- labelled %>%
-      mutate(new_wt = 1) %>% # Re-query labelled data points with probability 1. 
+      mutate(new_wt = 1) %>% # Re-query labelled data points with probability 1.
       add_row(new_sample) %>%
       mutate(sampling_weight = sampling_weight + any(new_sample$impact_speed0 > 0) * 
                (new_wt - sampling_weight) / collision_counter, # Update sampling weights if crash was generated. 

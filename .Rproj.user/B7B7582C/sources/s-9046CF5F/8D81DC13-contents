@@ -2,31 +2,44 @@
 calculate_sampling_scheme <- function(unlabelled,
                                       labelled,
                                       sampling_method = c("uniform", 
-                                                          "propto eoff_acc_prob", 
-                                                          "propto eoff_acc_prob * eoff * maximpact0", 
-                                                          "propto eoff_acc_prob * abs(acc) * maximpact0", 
-                                                          "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                                          "importance sampling", 
                                                           "optimised"), 
-                                      target = c("none", 
+                                      proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
+                                                        "propto eoff_acc_prob", 
+                                                        "propto eoff_acc_prob * eoff * maximpact0", 
+                                                        "propto eoff_acc_prob * abs(acc) * maximpact0", 
+                                                        "propto eoff_acc_prob * eoff * abs(acc) * maximpact0"), 
+                                      target = c("NA", # Only used when sampling_method = "optimised", "NA" otherwise.
                                                  "baseline impact speed distribution", 
                                                  "impact speed reduction", 
                                                  "crash avoidance",
                                                  "injury risk reduction",
                                                  "injury risk reduction, stratified"),
-                                      num_cases) {
+                                      num_cases = 1) {
   
   # Check input parameters.
   sampling_method <- match.arg(sampling_method)
+  proposal_dist <- match.arg(proposal_dist)
   target <- match.arg(target)
   
-  # target should be "none" when sampling_method not equal to "optimised".
-  if ( sampling_method != "optimised" ) { 
-    target = "none" 
+  # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
+  if ( sampling_method != "importance sampling" ) { 
+    proposal_dist <- "NA"
   } 
   
-  # Target must be specified if sampling_method = "optimised".
-  if ( sampling_method == "optimised" & target == "none" ) {
-    stop("Error in calculate_sampling_schene. sampling_method = optimised and target = none not allowed.")
+  # proposal_dist must be specified if sampling_method = "importance sampling".
+  if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
+    stop("Error in calculate_sampling_scheme. sampling_method = importance sampling and proposal_dist = none not allowed.")
+  }
+  
+  # target should be "NA" when sampling_method not equal to "optimised".
+  if ( sampling_method != "optimised" ) { 
+    target <- "NA" 
+  } 
+  
+  # target must be specified if sampling_method = "optimised".
+  if ( sampling_method == "optimised" & target == "NA" ) {
+    stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = none not allowed.")
   }
   
   # num_cases should be integer between 1 and number of cases in input unlabelled set.
@@ -51,22 +64,26 @@ calculate_sampling_scheme <- function(unlabelled,
     
     size <- rep(1, nrow(unlabelled))
     
-  } else if ( sampling_method == "propto eoff_acc_prob" ) {
+  } else if ( sampling_method == "importance sampling" ) {
     
-    size <- with(unlabelled, eoff_acc_prob)
-    
-  } else if ( sampling_method == "propto eoff_acc_prob * eoff * maximpact0" ) {
-    
-    size <- with(unlabelled, eoff_acc_prob  * (eoff + 0.1) * maximpact0)
-    
-  } else if ( sampling_method == "propto eoff_acc_prob * abs(acc) * maximpact0" ) {
-    
-    size <- with(unlabelled, eoff_acc_prob  * abs(acc) * maximpact0)
- 
-  } else if ( sampling_method == "propto eoff_acc_prob * eoff * abs(acc) * maximpact0" ) {
-    
-    size <- with(unlabelled, eoff_acc_prob * (eoff + 0.1) * abs(acc) * maximpact0)
-    
+    if ( proposal_dist == "propto eoff_acc_prob" ) {
+      
+      size <- with(unlabelled, eoff_acc_prob)
+      
+    } else if ( proposal_dist == "propto eoff_acc_prob * eoff * maximpact0" ) {
+      
+      size <- with(unlabelled, eoff_acc_prob  * (eoff + 0.1) * maximpact0)
+      
+    } else if ( proposal_dist == "propto eoff_acc_prob * abs(acc) * maximpact0" ) {
+      
+      size <- with(unlabelled, eoff_acc_prob  * abs(acc) * maximpact0)
+      
+    } else if ( proposal_dist == "propto eoff_acc_prob * eoff * abs(acc) * maximpact0" ) {
+      
+      size <- with(unlabelled, eoff_acc_prob * (eoff + 0.1) * abs(acc) * maximpact0)
+      
+    } 
+
   } else if ( sampling_method == "optimised" ) {
     
     if ( target == "impact speed reduction" ) {
@@ -112,15 +129,11 @@ calculate_sampling_scheme <- function(unlabelled,
     } 
     
     size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
-    
+
     # Account for probability of (deceleration, glance) pair and probability of crash in baseline scenario.
     size <- with(unlabelled, sqrt(collision_prob0_pred) * eoff_acc_prob * size)
     
-  } else {
-    
-    stop(sprintf("ERROR in caltulate_sampling_scheme. Option sampling_method = %s not found.", sampling_method))
-    
-  }
+  } 
   
   # Probability proportional to size.
   sampling_probability <- num_cases * size / sum(size)

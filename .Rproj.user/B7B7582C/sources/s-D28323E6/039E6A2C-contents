@@ -1,2 +1,0 @@
-df$impact_speed1[df$caseID == 1] <- 0
-df$injury_risk1[df$caseID == 1] <- 0
