@@ -92,10 +92,10 @@ active_learning <- function(data,
     stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = none not allowed.")
   }
   
-  # num_cases should be integer between 1 and number of cases in input unlabelled set.
-  num_cases <- round(num_cases)
-  num_cases <- max(c(num_cases, 1))
-  num_cases <- min(c(num_cases, length(unique(unlabelled$caseID))))
+  # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
+  num_cases_per_iteration <- round(num_cases_per_iteration)
+  num_cases_per_iteration <- max(c(num_cases_per_iteration, 1))
+  num_cases_per_iteration <- min(c(num_cases_per_iteration, length(unique(data$caseID))))
   
   
   # Load helper functions.
