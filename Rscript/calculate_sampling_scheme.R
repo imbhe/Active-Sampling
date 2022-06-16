@@ -27,7 +27,7 @@ calculate_sampling_scheme <- function(unlabelled,
   
   # proposal_dist must be specified if sampling_method = "importance sampling".
   if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
-    stop("Error in calculate_sampling_scheme. sampling_method = importance sampling and proposal_dist = none not allowed.")
+    stop("Error in calculate_sampling_scheme. sampling_method = importance sampling and proposal_dist = NA not allowed.")
   }
   
   # target should be "NA" when sampling_method not equal to "optimised".
@@ -37,7 +37,7 @@ calculate_sampling_scheme <- function(unlabelled,
   
   # target must be specified if sampling_method = "optimised".
   if ( sampling_method == "optimised" & target == "NA" ) {
-    stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = none not allowed.")
+    stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = NA not allowed.")
   }
   
   # num_cases should be integer between 1 and number of cases in input unlabelled set.
@@ -47,14 +47,16 @@ calculate_sampling_scheme <- function(unlabelled,
   
 
   # Calculate maximal impact speed per case.
-  maximpact0 <- labelled %>% 
-    group_by(caseID) %>% 
-    summarise(maximpact0 = max(impact_speed0, na.rm = TRUE), .groups = "keep") %>% 
-    ungroup() %>% 
-    dplyr::select(caseID, maximpact0)
-  
-  unlabelled %<>% 
-    left_join(maximpact0, by = "caseID")
+  if ( nrow(labelled) > 0) {
+    maximpact0 <- labelled %>% 
+      group_by(caseID) %>% 
+      summarise(maximpact0 = max(impact_speed0, na.rm = TRUE), .groups = "keep") %>% 
+      ungroup() %>% 
+      dplyr::select(caseID, maximpact0)
+    
+    unlabelled %<>% 
+      left_join(maximpact0, by = "caseID")
+  }
   
   
   # Calculate 'size'.
@@ -125,7 +127,10 @@ calculate_sampling_scheme <- function(unlabelled,
       size[is.na(size)] <- 0
       
     } 
-    
+
+    if ( all(is.na(size)) || !any(size > 0) ) { # If no positive 'sizes' found -> set all equal. Becomes same as importance sampling with probability proportional to eoff acc probability.
+      size[1:length(size)] <- 1
+    }
     size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
 
     # Account for probability of (deceleration, glance) pair and probability of crash in baseline scenario.
@@ -135,7 +140,7 @@ calculate_sampling_scheme <- function(unlabelled,
   
   # Probability proportional to size.
   sampling_probability <- num_cases * size / sum(size)
-  
+
   
   # Adjustment to account for sampling of multiple cases per iteration.
   case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)

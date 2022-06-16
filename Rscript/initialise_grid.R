@@ -14,7 +14,6 @@ initialise_grid <- function(data, grid) {
   ones <- rep(1, n)
   unlabelled <- data %>% 
     left_join(grid, by = c("eoff", "acc")) %>%
-    dplyr::select( -impact_speed0, -impact_speed1, -injury_risk0, -injury_risk1) %>% 
     mutate(collision_prob0_pred = NA_real_, 
            collision_prob1_pred = NA_real_, 
            impact_speed0_pred = NA_real_,
@@ -27,8 +26,10 @@ initialise_grid <- function(data, grid) {
            non_crash1 = NA_integer_,
            max_impact0 = NA_integer_,
            max_impact1 = NA_integer_,
-           sim_count0 = ifelse(is.na(sim_count0), ones, zeroes),
-           sim_count1 = ifelse(is.na(sim_count1), ones, zeroes))
+           sim_count0 = ifelse(is.na(sim_count0), ones, 1 - sim_count0),
+           sim_count1 = ifelse(is.na(sim_count1), ones, 1 - sim_count1),
+           sim_count1 = ifelse(impact_speed0 <= 0 & reduce_simulations_by_logic, 0, sim_count1)) %>%
+    dplyr::select( -impact_speed0, -impact_speed1, -injury_risk0, -injury_risk1)
   
   return(list(labelled = labelled, unlabelled = unlabelled))
 }
