@@ -118,8 +118,7 @@ active_learning <- function(data,
   
  
   # Initialise on grid.
-  grid <- tibble(eoff = min(data$eoff), acc = min(data$acc)) %>% 
-    add_row(eoff = max(data$eoff), acc = max(data$acc)) %>% 
+  grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) %>% 
     mutate(sim_count0 = 1, 
            sim_count1 = 1)
  
@@ -229,7 +228,7 @@ active_learning <- function(data,
     
     # Update labelled and unlabelled sets.
     labelled <- labelled %>%
-      mutate(new_wt = 1) %>% # Re-query labelled data points with probability 1.
+      mutate(new_wt = 0) %>% 
       add_row(new_sample) %>%
       mutate(sampling_weight = sampling_weight + any(new_sample$impact_speed0 > 0) * 
                (new_wt - sampling_weight) / collision_counter, # Update sampling weights if crash was generated. 
