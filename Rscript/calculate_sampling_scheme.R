@@ -85,7 +85,7 @@ calculate_sampling_scheme <- function(unlabelled,
     } else if ( target == "baseline impact speed distribution" ) {
       
       est <- estimate_targets(labelled, weightvar = "final_weight")
-      if ( est["impact_speed0_logSD"] == 0 ) { # Ad-hoc correction for zero SD in small samples.
+      if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { # Ad-hoc correction for zero SD in small samples.
         est["impact_speed0_logSD"] <- 1
       }
       Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
