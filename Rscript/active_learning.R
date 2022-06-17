@@ -170,8 +170,7 @@ active_learning <- function(data,
                sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
   
     } # End reduce_simulations_by_logic.
-    print(dim(unlabelled))
-  
+
   
     # Update predictions for cases with new data.
     if ( sampling_method == "optimised" ) {
