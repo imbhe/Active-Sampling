@@ -1,6 +1,0 @@
-set.seed(1)
-
-for( i in 1:100 ) {
-  print(sprintf("%d", i))
-  res <- active_learning(data, sampling_method, proposal_dist, target, reduce_simulations_by_logic, niter = 3, nburnin = 0, verbose = TRUE)
-}

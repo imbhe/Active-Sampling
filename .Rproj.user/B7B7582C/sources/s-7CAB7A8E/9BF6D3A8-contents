@@ -126,7 +126,7 @@ active_learning <- function(data,
     mutate(sim_count0 = ifelse( (sampling_method == "uniform" | (sampling_method == "importance sampling" & proposal_dist == "propto eoff_acc_prob")) & !reduce_simulations_by_logic, 0, 1), 
            sim_count1 = sim_count0)
  
-  init <- initialise_grid(data, grid)
+  init <- initialise_grid(data, grid, reduce_simulations_by_logic)
   
   labelled <- init$labelled
   unlabelled <- init$unlabelled 
@@ -176,23 +176,17 @@ active_learning <- function(data,
     if ( sampling_method == "optimised" ) {
       for ( j in unique(new_sample$caseID) ) {
         
-        # Baseline scenario.
-        pred0 <- update_predictions(labelled %>% filter(caseID == j), 
-                                    unlabelled %>% filter(caseID == j),
-                                    yvar = "impact_speed0") 
-        
-        # With counter measure.
-        pred1 <- update_predictions(labelled %>% filter(caseID == j), 
-                                    unlabelled %>% filter(caseID == j),
-                                    yvar = "impact_speed1") 
+        # Calculated predictions.
+        pred <- update_predictions(labelled %>% filter(caseID == j), 
+                                    unlabelled %>% filter(caseID == j)) 
         
         # Add to unlabelled data set.
         unlabelled_j <- unlabelled %>% 
           filter(caseID == j) %>% 
-          mutate(collision_prob0_pred = pred0$collision_prob,
-                 collision_prob1_pred = pred1$collision_prob,
-                 impact_speed0_pred = pred0$impact_speed_pred, 
-                 impact_speed1_pred = pred1$impact_speed_pred,
+          mutate(collision_prob0_pred = pred$collision_prob0,
+                 collision_prob1_pred = pred$collision_prob1,
+                 impact_speed0_pred = pred$impact_speed_pred0, 
+                 impact_speed1_pred = pred$impact_speed_pred1,
                  injury_risk0_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed0_pred / 2)))^(-1),
                  injury_risk1_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed1_pred / 2)))^(-1),
                  injury_risk0_pred = ifelse(impact_speed0_pred > 0, injury_risk0_pred, 0), # Set injury risk to zero if no collision.
