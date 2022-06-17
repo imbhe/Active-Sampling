@@ -223,7 +223,7 @@ active_learning <- function(data,
         # to favour exploration in early iterations.
         k <- log(2) / n_cases *  num_cases_per_iteration 
         w <- 1 - exp(-k * (n_cases / num_cases_per_iteration + i - (nburnin + 1))) 
-        print(w)
+        #print(w)
 
         prob1 <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
         

@@ -55,6 +55,7 @@ active_learning <- function(data,
                             reduce_simulations_by_logic = TRUE, # TRUE or FALSE. 
                             num_cases_per_iteration = 1,
                             niter = 500, 
+                            nburnin = 0, # Only used with sampling_method = "optimised".
                             nboot = 100, 
                             verbose = FALSE) { # TRUE or FALSE.
   
@@ -97,6 +98,9 @@ active_learning <- function(data,
   num_cases_per_iteration <- max(c(num_cases_per_iteration, 1))
   num_cases_per_iteration <- min(c(num_cases_per_iteration, length(unique(data$caseID))))
   
+  # nburnin should be positive integer.
+  nburnin <- max(floor(nburnin), 0)
+  
   
   # Load helper functions.
   source("Rscript/calculate_sampling_scheme.R")
@@ -118,20 +122,18 @@ active_learning <- function(data,
   
  
   # Initialise on grid.
-  grid <- tibble(eoff = min(data$eoff), acc = min(data$acc)) %>% 
-    add_row(eoff = max(data$eoff), acc = max(data$acc)) %>% 
-    mutate(sim_count0 = 1, 
-           sim_count1 = 1)
+  grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) %>% 
+    mutate(sim_count0 = ifelse( (sampling_method == "uniform" | (sampling_method == "importance sampling" & proposal_dist == "propto eoff_acc_prob")) & !reduce_simulations_by_logic, 0, 1), 
+           sim_count1 = sim_count0)
  
   init <- initialise_grid(data, grid)
   
   labelled <- init$labelled
-  unlabelled <- init$unlabelled
+  unlabelled <- init$unlabelled 
 
   
   # Iterate
   new_sample <- labelled 
-  collision_counter <- 1
   for ( i in 1:niter ) {
     
     # Print iteration number if verbose = TRUE.
@@ -170,42 +172,85 @@ active_learning <- function(data,
   
   
     # Update predictions for cases with new data.
-    for ( j in unique(new_sample$caseID) ) {
-
-      # Baseline scenario.
-      pred0 <- update_predictions(labelled %>% filter(caseID == j), 
-                                  unlabelled %>% filter(caseID == j),
-                                  yvar = "impact_speed0") 
-      
-      # With counter measure.
-      pred1 <- update_predictions(labelled %>% filter(caseID == j), 
-                                  unlabelled %>% filter(caseID == j),
-                                  yvar = "impact_speed1") 
-      
-      # Add to unlabelled data set.
-      unlabelled_j <- unlabelled %>% 
-        filter(caseID == j) %>% 
-        mutate(collision_prob0_pred = pred0$collision_prob,
-               collision_prob1_pred = pred1$collision_prob,
-               impact_speed0_pred = pred0$impact_speed_pred, 
-               impact_speed1_pred = pred1$impact_speed_pred,
-               injury_risk0_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed0_pred / 2)))^(-1),
-               injury_risk1_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed1_pred / 2)))^(-1),
-               injury_risk0_pred = ifelse(impact_speed0_pred > 0, injury_risk0_pred, 0), # Set injury risk to zero if no collision.
-               injury_risk1_pred = ifelse(impact_speed1_pred > 0, injury_risk1_pred, 0))
-    
-      ix <- which(unlabelled$caseID == j)
-      unlabelled[ix, ] <- unlabelled_j 
-      
-    } # End update predictions.
-    
+    if ( sampling_method == "optimised" ) {
+      for ( j in unique(new_sample$caseID) ) {
+        
+        # Baseline scenario.
+        pred0 <- update_predictions(labelled %>% filter(caseID == j), 
+                                    unlabelled %>% filter(caseID == j),
+                                    yvar = "impact_speed0") 
+        
+        # With counter measure.
+        pred1 <- update_predictions(labelled %>% filter(caseID == j), 
+                                    unlabelled %>% filter(caseID == j),
+                                    yvar = "impact_speed1") 
+        
+        # Add to unlabelled data set.
+        unlabelled_j <- unlabelled %>% 
+          filter(caseID == j) %>% 
+          mutate(collision_prob0_pred = pred0$collision_prob,
+                 collision_prob1_pred = pred1$collision_prob,
+                 impact_speed0_pred = pred0$impact_speed_pred, 
+                 impact_speed1_pred = pred1$impact_speed_pred,
+                 injury_risk0_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed0_pred / 2)))^(-1),
+                 injury_risk1_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed1_pred / 2)))^(-1),
+                 injury_risk0_pred = ifelse(impact_speed0_pred > 0, injury_risk0_pred, 0), # Set injury risk to zero if no collision.
+                 injury_risk1_pred = ifelse(impact_speed1_pred > 0, injury_risk1_pred, 0))
+        
+        ix <- which(unlabelled$caseID == j)
+        unlabelled[ix, ] <- unlabelled_j 
+        
+      }
+    }  # End update predictions.
     
     # Calculate sampling probabilities. 
-    prob <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
+    n_cases <- length(unique(unlabelled$caseID))
+    if ( sampling_method == "optimised") { 
+      
+      # Run a few iterations with case-stratified importance sampling before optimisation can start.
+      if ( i <= nburnin ) {
+        
+        prob <- calculate_sampling_scheme(unlabelled, labelled, 
+                                          sampling_method = "importance sampling", 
+                                          proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                          target = "NA", 
+                                          num_cases = n_cases)
+        
+      } else {
+        
+        # Combine optimised sampling and importance sampling
+        # with exponential decay on weight for importance sampling
+        # to favour exploration in early iterations.
+        k <- log(2) / n_cases *  num_cases_per_iteration 
+        w <- 1 - exp(-k * (n_cases / num_cases_per_iteration + i - (nburnin + 1))) 
+        #print(w)
+
+        prob1 <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
+        
+        prob2 <- calculate_sampling_scheme(unlabelled, labelled, 
+                                           sampling_method = "importance sampling", 
+                                           proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                           target = "NA", 
+                                           num_cases = num_cases_per_iteration)
+        
+        prob$sampling_probability <- w * prob1$sampling_probability + (1 - w) * prob2$sampling_probability
+        prob$case_probability <- w * prob1$case_probability + (1 - w) * prob2$case_probability
+      
+      }
+      
+    } else {
+      
+      prob <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
+   
+    }
     
     # Sample cases.
     cases <- as.numeric(names(table(unlabelled$caseID)))
-    new_cases <- cases[which(UPmaxentropy(prob$case_probability) == 1)]
+    if ( all(prob$case_probability >= (1 - 1e-12)) ) {
+      new_cases <- cases
+    } else {
+      new_cases <- cases[which(UPmaxentropy(prob$case_probability) == 1)]
+    }
     
     # Sample variations.
     ix <- rep(0, nrow(unlabelled)) # Binary selection indicator.
@@ -220,36 +265,43 @@ active_learning <- function(data,
     
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
-      mutate(sampling_weight = 0, 
-             new_wt = new_wt) %>% 
-      filter(new_wt > 0) %>% 
-      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, sampling_weight, new_wt) %>% 
+      mutate(old_weight = 0, 
+             new_weight = new_wt) %>% 
+      filter(new_weight > 0) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, old_weight, new_weight) %>% 
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
  
     
-    # Update labelled and unlabelled sets.
-    labelled <- labelled %>%
-      mutate(new_wt = 1) %>% # Re-query labelled data points with probability 1.
+    # Update labelled set.
+    labelled %<>%
+      mutate(old_weight = sampling_weight,
+             new_weight = 0) %>% 
       add_row(new_sample) %>%
-      mutate(sampling_weight = sampling_weight + any(new_sample$impact_speed0 > 0) * 
-               (new_wt - sampling_weight) / collision_counter, # Update sampling weights if crash was generated. 
+      mutate(sampling_weight = old_weight + (new_weight - old_weight) / i, # Update sampling weights. 
              final_weight = eoff_acc_prob * sampling_weight) %>%
-      dplyr::select(-new_wt)
-    
-    unlabelled %<>%
-      mutate(new_wt = new_wt) %>% 
-      filter(new_wt <= 0) %>% 
-      dplyr::select(-new_wt)
+      dplyr::select(-old_weight, -new_weight)
     
     
+    # Update unlabelled set.
+    unlabelled %<>% 
+      mutate(sim_count0 = ifelse(new_wt > 0, 0, sim_count0),
+             sim_count1 = ifelse(new_wt > 0, 0, sim_count1))
+    
+ 
     # Estimate target quantities.
     crashes <- labelled %>% filter(impact_speed0 > 0)
     effective_number_simulations0 <- effective_number_simulations1 <- nrow(labelled)
     actual_number_simulations0 <- sum(labelled$sim_count0)
     actual_number_simulations1 <- sum(labelled$sim_count1)
-    boot <- boot(crashes, statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), R = nboot)
-    est <- boot$t0 # Estimates.
-    se <- apply(boot$t, 2 , sd) # Standard error of estimates.
+    
+    if ( nrow(crashes) > 0 ) { # If any crashes have been generated.
+      boot <- boot(crashes, statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), R = nboot)
+      est <- boot$t0 # Estimates.
+      se <- apply(boot$t, 2 , sd) # Standard error of estimates.
+    } else {
+      est <- estimate_targets(crashes) # Returns NaN if crashes is empty set.
+      se <- rep(NA, length(est))
+    }
     sqerr <- (est - ground_truth)^2 # Squared error with respect to ground truth.
     names(se) <- paste0(names(est), "_se")
     names(sqerr) <- paste0(names(est), "_sqerr")
@@ -276,11 +328,6 @@ active_learning <- function(data,
       res %<>% 
         add_row(newres)
     }
-    
-    
-    # Increase counter if at least one new crash has been generated in baseline scenario.
-    collision_counter <- collision_counter + any(new_sample$impact_speed0 > 0)
-    
     
   } # End active learning.
 

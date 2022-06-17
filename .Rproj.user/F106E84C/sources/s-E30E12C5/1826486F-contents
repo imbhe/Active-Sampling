@@ -13,8 +13,10 @@ sim_output <- function(df,input,inputparameter){
                             target, 
                             inputparameter$reduce_simulations_by_logic, # TRUE or FALSE 
                             inputparameter$num_cases_per_iteration,
-                            inputparameter$total_iter, 
-                            inputparameter$total_nboot)
+                            inputparameter$total_iter,
+                            inputparameter$nburnin,
+                            inputparameter$total_nboot,
+                            inputparameter$verbose)
     print(paste("simulation round:",k))
     res_list[[k]] <- out$results
   }

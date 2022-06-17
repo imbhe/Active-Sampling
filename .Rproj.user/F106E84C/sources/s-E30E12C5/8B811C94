@@ -8,7 +8,7 @@
     "dirty": false,
     "created": 1655329926928.0,
     "source_on_save": false,
-    "relative_order": 10,
+    "relative_order": 9,
     "properties": {
         "expression": "structure(list(iter = 1, mean_impact_speed0_sqerr = 12.2013067464844,      absolute_impact_speed_reduction_sqerr = 3.53757358377547,      proportion_crashes_avoided_sqerr = 0.499997345746619, absolute_injury_risk_reduction_sqerr = 0.00488035850572446,      neff0 = 21), row.names = c(NA, -1L), class = \"data.frame\")",
         "caption": "res_total[[1]]$aver",

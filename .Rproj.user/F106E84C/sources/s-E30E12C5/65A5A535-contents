@@ -1,4 +1,5 @@
 # Question: where is the seed used?
+# nburnin = 0 does not work
 library("readxl")
 source("Rscript/active_learning.R")
 library("tidyverse")
@@ -6,15 +7,16 @@ library("ggplot2")
 source("Rscript/sim_output.R")
 load("Data/glance_dec_data_test.R")
 
-input <- read_excel("C:/Users/XYANG118/OneDrive - Volvo Cars/Documents/upload/Git/updated_Glance_Sampling/Glance_sampling/Data/Input.xlsx", 
-)
+input <- read_excel("C:/Users/XYANG118/OneDrive - Volvo Cars/Documents/upload/Git/updated_Glance_Sampling/Glance_sampling/Data/Input.xlsx")
 
-total_iter = 5
+total_iter = 150
 total_nboot = 0
-Sim_n = 3
+Sim_n = 50
 num_cases_per_iteration = 1
 reduce_simulations_by_logic = TRUE
-inputparameter <- data.frame(reduce_simulations_by_logic,num_cases_per_iteration,total_iter, total_nboot,Sim_n)
+nburnin = 2
+verbose = FALSE
+inputparameter <- data.frame(reduce_simulations_by_logic,num_cases_per_iteration,total_iter, nburnin,total_nboot,verbose,Sim_n)
 
 res_total = replicate(tail(input$sim_order, 1), data.frame())
 for(i in 1:tail(input$sim_order, 1))
@@ -25,4 +27,4 @@ for(i in 1:tail(input$sim_order, 1))
 }
 
 save(res_total, file = "Data/res_analysis_test.R")
-# 
+ 
