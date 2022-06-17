@@ -150,7 +150,8 @@ active_learning <- function(data,
         mutate(non_crash0 = ifelse(row_number() %in% ix$non_crashes0, 1, non_crash0),
                non_crash1 = ifelse(row_number() %in% ix$non_crashes1, 1, non_crash1),
                sim_count0 = ifelse(row_number() %in% ix$non_crashes0, 0, sim_count0),
-               sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) 
+               sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) %>%
+        filter(!(row_number() %in% ix$non_crashes0)) # Remove certainty non-crashes from unlabelled set.
 
       # Find all known crashes in unlabelled dataset.
       ix <- find_crashes(new_sample, unlabelled)
@@ -167,7 +168,7 @@ active_learning <- function(data,
                max_impact1 = ifelse(row_number() %in% ix$max_impact_crashes1, 1, max_impact1),
                sim_count0 = ifelse(row_number() %in% ix$max_impact_crashes0, 0, sim_count0),
                sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
-        
+  
     } # End reduce_simulations_by_logic.
   
   
@@ -212,7 +213,7 @@ active_learning <- function(data,
         
         prob <- calculate_sampling_scheme(unlabelled, labelled, 
                                           sampling_method = "importance sampling", 
-                                          proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                          proposal_dist = "propto eoff_acc_prob", 
                                           target = "NA", 
                                           num_cases = n_cases)
         
@@ -222,14 +223,14 @@ active_learning <- function(data,
         # with exponential decay on weight for importance sampling
         # to favour exploration in early iterations.
         k <- log(2) / n_cases *  num_cases_per_iteration 
-        w <- 1 - exp(-k * (n_cases / num_cases_per_iteration + i - (nburnin + 1))) 
-        #print(w)
-
+        w <- 2^(nburnin < 1) * (1 - exp(-k * (n_cases / num_cases_per_iteration + i - (nburnin + 1))))
+        print(w)
+        
         prob1 <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
         
         prob2 <- calculate_sampling_scheme(unlabelled, labelled, 
                                            sampling_method = "importance sampling", 
-                                           proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                           proposal_dist = "propto eoff_acc_prob", 
                                            target = "NA", 
                                            num_cases = num_cases_per_iteration)
         
