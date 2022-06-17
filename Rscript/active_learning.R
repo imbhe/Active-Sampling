@@ -170,6 +170,7 @@ active_learning <- function(data,
                sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
   
     } # End reduce_simulations_by_logic.
+    print(dim(unlabelled))
   
   
     # Update predictions for cases with new data.
@@ -213,7 +214,7 @@ active_learning <- function(data,
         
         prob <- calculate_sampling_scheme(unlabelled, labelled, 
                                           sampling_method = "importance sampling", 
-                                          proposal_dist = "propto eoff_acc_prob", 
+                                          proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
                                           target = "NA", 
                                           num_cases = n_cases)
         
@@ -223,17 +224,17 @@ active_learning <- function(data,
         # with exponential decay on weight for importance sampling
         # to favour exploration in early iterations.
         k <- log(2) / n_cases *  num_cases_per_iteration 
-        w <- 2^(nburnin < 1) * (1 - exp(-k * (n_cases / num_cases_per_iteration + i - (nburnin + 1))))
-        print(w)
-        
+        w <- 1 - exp(-k * (n_cases / num_cases_per_iteration * (nburnin > 0) + i - (nburnin + 1)))
+
         prob1 <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
         
         prob2 <- calculate_sampling_scheme(unlabelled, labelled, 
                                            sampling_method = "importance sampling", 
-                                           proposal_dist = "propto eoff_acc_prob", 
+                                           proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
                                            target = "NA", 
                                            num_cases = num_cases_per_iteration)
         
+        prob <- prob1
         prob$sampling_probability <- w * prob1$sampling_probability + (1 - w) * prob2$sampling_probability
         prob$case_probability <- w * prob1$case_probability + (1 - w) * prob2$case_probability
       
