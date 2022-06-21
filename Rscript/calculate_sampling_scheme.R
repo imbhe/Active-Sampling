@@ -13,7 +13,8 @@ calculate_sampling_scheme <- function(unlabelled,
                                                  "crash avoidance",
                                                  "injury risk reduction",
                                                  "injury risk reduction, stratified"),
-                                      num_cases = 1) {
+                                      num_cases = 1, 
+                                      sigma = 0) {
   
   # Check input parameters.
   sampling_method <- match.arg(sampling_method)
@@ -80,17 +81,18 @@ calculate_sampling_scheme <- function(unlabelled,
     
     if ( target == "impact speed reduction" ) {
       
-      size <- with(unlabelled, impact_speed0_pred - impact_speed1_pred)
+      size <- with(unlabelled, sqrt((impact_speed0_pred - impact_speed1_pred)^2 + sigma^2))
 
     } else if ( target == "baseline impact speed distribution" ) {
       
       est <- estimate_targets(labelled, weightvar = "final_weight")
       if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { # Ad-hoc correction for zero SD in small samples.
-        est["impact_speed0_logSD"] <- 1
+        est["impact_speed0_logSD"] <- Inf
       }
       Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
                   est["impact_speed0_logSD"])
-      size <- sqrt(Z^2 + 0.25 * (1 + Z^2)^2)
+      r <- sigma / est["impact_speed0_logSD"]
+      size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
       size[is.infinite(size)] <- 0
       
     } else if ( target == "crash avoidance" ) {
@@ -99,14 +101,14 @@ calculate_sampling_scheme <- function(unlabelled,
 
     } else if ( target == "injury risk reduction" ) {
       
-      size <- with(unlabelled, injury_risk0_pred - injury_risk1_pred)
+      size <- with(unlabelled, sqrt((injury_risk0_pred - injury_risk1_pred)^2 + sigma^2))
       
     } else if ( target == "injury risk reduction, stratified" ) {
       
       nStrata <- 10
       sizeMat <- matrix(0, nrow = nrow(unlabelled), ncol = nStrata)
       for ( i in 1:nStrata ) {
-        sizeMat[, i] <- with(unlabelled, ifelse(impact_speed0_pred > 10 * (i - 1) & impact_speed0_pred <= 10 * i, sqrt(collision_prob0_pred) * eoff_acc_prob * pmax(injury_risk0_pred - injury_risk1_pred, 0), rep(0, length(injury_risk0_pred))))
+        sizeMat[, i] <- with(unlabelled, ifelse(impact_speed0_pred > 10 * (i - 1) & impact_speed0_pred <= 10 * i, sqrt(collision_prob0_pred) * eoff_acc_prob * sqrt((injury_risk0_pred - injury_risk1_pred)^2 + sigma^2), rep(0, length(injury_risk0_pred))))
       }
       
       # Pooled 'size' is root sum of squares of standardised individual 'sizes'.

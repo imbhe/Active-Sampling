@@ -1,10 +1,32 @@
+# Combine optimised sampling and importance sampling
+# with exponential decay on weight for importance sampling
+# to favour exploration in early iterations.
+k <- log(2) / n_cases *  num_cases_per_iteration 
+w <- 1 - exp(-k * (n_cases / num_cases_per_iteration * (nburnin > 0) + i - (nburnin + 1)))
+
+prob1 <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
+
+prob2 <- calculate_sampling_scheme(unlabelled, labelled,
+                                   sampling_method = "importance sampling",
+                                   proposal_dist = "propto eoff_acc_prob",
+                                   target = "NA",
+                                   num_cases = num_cases_per_iteration)
+
+prob <- prob1
+prob$sampling_probability <- w * prob1$sampling_probability + (1 - w) * prob2$sampling_probability
+prob$case_probability <- w * prob1$case_probability + (1 - w) * prob2$case_probability
+
+
+
+
+
 update_predictions <- function(labelled, unlabelled) {
   
   defaultW <- getOption("warn")
   
   ymin <- min(labelled$impact_speed0)
   ymax <- max(labelled$impact_speed0)
-
+  
   # Labelled, wide to long format.
   labelled0 <- labelled %>% 
     dplyr::select(caseID, eoff, acc, eoff_acc_prob, impact_speed0) %>% 
@@ -40,8 +62,8 @@ update_predictions <- function(labelled, unlabelled) {
   crash <- unlabelled$crash
   non_crash <- unlabelled$non_crash
   max_impact <- unlabelled$max_impact
-
- 
+  
+  
   # Prepare data for model fitting using fractional polynomials.
   form <- ~ -1 + I((-acc)^(-3)) + I((-acc)^(-2)) +
     I((-acc)^(-1)) + I((-acc)^(-0.5)) +
@@ -65,7 +87,7 @@ update_predictions <- function(labelled, unlabelled) {
   
   
   # Estimate impact speed. ----
-    
+  
   # Random forest.
   options(warn = -1)
   rf <- safe_random_forest(impact_speed ~ scenario + eoff + acc, data = labelled %>% filter(impact_speed > 0 & impact_speed < ymax))
@@ -104,7 +126,7 @@ update_predictions <- function(labelled, unlabelled) {
     yhat2 <- yhat1
     
   }
-
+  
   
   # Estimate collision probability. ----
   
@@ -136,7 +158,7 @@ update_predictions <- function(labelled, unlabelled) {
     
   } # End !is.null(rf).
   
- 
+  
   # Fractional polynomial LASSO logistic regression with outcome-stratified cross-validation. 
   nstrata <- min(min(table(y > 0)), 10)
   events <- which(y > 0) 
@@ -158,12 +180,12 @@ update_predictions <- function(labelled, unlabelled) {
   } else { # If unable to fit model: use predictions from random forest. 
     
     ppos2 <- ppos1
-  
+    
   } 
   
   
   # Estimate max impact speed collision probability. ----
- 
+  
   # Random forest.
   options(warn = -1)
   rf <- safe_random_forest(as.factor(impact_speed == ymax) ~ scenario + eoff + acc, data = labelled)
@@ -186,7 +208,7 @@ update_predictions <- function(labelled, unlabelled) {
       
     }
   }
- 
+  
   
   # Fractional polynomial LASSO logistic regression with outcome-stratified cross-validation.
   nstrata <- min(min(table(y == ymax)), 10)
@@ -211,7 +233,7 @@ update_predictions <- function(labelled, unlabelled) {
     pmax2 <- pmax1
     
   } 
-
+  
   
   # Combine predictions + add logic.
   ppos <- pmax((ppos1 + ppos2) / 2, crash, na.rm = TRUE) 
@@ -221,7 +243,7 @@ update_predictions <- function(labelled, unlabelled) {
   yhat <- (yhat1 + yhat2) / 2
   ypred <- ppos * yhat + pmax * (ymax - yhat)
   
-
+  
   return(list(collision_prob0 = as.numeric(ppos[unlabelled$scenario == 0]), 
               collision_prob1 = as.numeric(ppos[unlabelled$scenario == 1]),
               impact_speed_pred0 = as.numeric(ypred[unlabelled$scenario == 0]),
