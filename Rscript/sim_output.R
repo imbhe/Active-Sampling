@@ -12,12 +12,13 @@ sim_output <- function(df,input,inputparameter){
     out <- active_learning (df, sampling_method, 
                             proposal_dist,
                             target, 
-                            input$reduce_simulations_by_logic, # TRUE or FALSE 
+                            reduce_simulations_by_logic = input$reduce_simulations_by_logic, # TRUE or FALSE 
                             inputparameter$num_cases_per_iteration,
                             inputparameter$total_iter,
                             inputparameter$nburnin,
                             inputparameter$total_nboot,
-                            inputparameter$verbose)
+                            inputparameter$verbose,
+                            plot = FALSE)
     res_list[[k]] <- out$results
   }
   res = do.call(rbind, res_list)

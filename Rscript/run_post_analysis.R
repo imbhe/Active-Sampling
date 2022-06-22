@@ -4,11 +4,11 @@ library("readxl")
 source("Rscript/active_learning.R")
 #library("tidyverse")
 source("Rscript/sim_output.R")
-load("Data/glance_dec_data.R")
+load("Data/glance_dec_data_test.R")
 
 sampling_input <- read_excel("Data/Sampling_input.xlsx")
 # have another table input for simulation number choice
-param_input <- read_excel("Data/param_input2.xlsx")
+param_input <- read_excel("Data/param_input.xlsx")
 add_effn = 150
 nburnin = 0
 verbose = FALSE
@@ -31,7 +31,7 @@ for(j in 1:length(param_input$Sim_n)){
   res_total[[j]] <- res_top_loop
 }  
   
-save(res_total, file = "Data/res_analysis_data3.R")
+save(res_total, file = "Data/res_analysis_data_test.R")
 
 
  

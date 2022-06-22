@@ -180,7 +180,6 @@ active_learning <- function(data,
 
   
     # Update predictions for cases with new data.
-<<<<<<< Updated upstream:.Rproj.user/F106E84C/sources/s-0592D78E/17135395-contents
     if ( sampling_method == "optimised" & i > nburnin ) {
 
         # Calculated predictions.
@@ -188,18 +187,6 @@ active_learning <- function(data,
         
         # Add to unlabelled data set.
         unlabelled %<>% 
-=======
-    if ( sampling_method == "optimised" ) {
-      for ( j in unique(new_sample$caseID) ) {
-        
-        # Calculated predictions.
-        pred <- update_predictions(labelled %>% filter(caseID == j), 
-                                    unlabelled %>% filter(caseID == j)) 
-        
-        # Add to unlabelled data set.
-        unlabelled_j <- unlabelled %>% 
-          filter(caseID == j) %>% 
->>>>>>> Stashed changes:.Rproj.user/F106E84C/sources/s-5B599EEE/950427C4-contents
           mutate(collision_prob0_pred = pred$collision_prob0,
                  collision_prob1_pred = pred$collision_prob1,
                  impact_speed0_pred = pred$impact_speed_pred0, 
@@ -215,40 +202,7 @@ active_learning <- function(data,
     # Calculate sampling probabilities. 
     # Run a few iterations with case-stratified importance sampling before optimisation starts.
     n_cases <- length(unique(unlabelled$caseID))
-<<<<<<< Updated upstream:.Rproj.user/F106E84C/sources/s-0592D78E/17135395-contents
     if ( sampling_method == "optimised" & i <= nburnin ) {
-=======
-    if ( sampling_method == "optimised") { 
-      
-      # Run a few iterations with case-stratified importance sampling before optimisation can start.
-      if ( i <= nburnin ) {
-        
-        prob <- calculate_sampling_scheme(unlabelled, labelled, 
-                                          sampling_method = "importance sampling", 
-                                          proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
-                                          target = "NA", 
-                                          num_cases = n_cases)
-        
-      } else {
-        
-        # Combine optimised sampling and importance sampling
-        # with exponential decay on weight for importance sampling
-        # to favour exploration in early iterations.
-        k <- log(2) / n_cases *  num_cases_per_iteration 
-        w <- 1 - exp(-k * (n_cases / num_cases_per_iteration * (nburnin > 0) + i - (nburnin + 1)))
-
-        prob1 <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
-        
-        prob2 <- calculate_sampling_scheme(unlabelled, labelled, 
-                                           sampling_method = "importance sampling", 
-                                           proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
-                                           target = "NA", 
-                                           num_cases = num_cases_per_iteration)
-        
-        prob <- prob1
-        prob$sampling_probability <- w * prob1$sampling_probability + (1 - w) * prob2$sampling_probability
-        prob$case_probability <- w * prob1$case_probability + (1 - w) * prob2$case_probability
->>>>>>> Stashed changes:.Rproj.user/F106E84C/sources/s-5B599EEE/950427C4-contents
       
       prob <- calculate_sampling_scheme(unlabelled, labelled, 
                                         sampling_method = "importance sampling", 
