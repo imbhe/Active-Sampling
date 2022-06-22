@@ -8,16 +8,16 @@ sim_output <- function(df,input,inputparameter){
   res_list <- replicate(Sim_n, data.frame())
   for (k in 1:Sim_n){
     set.seed(k)
-    print(paste("simulation round:",k))
     out <- active_learning (df, sampling_method, 
                             proposal_dist,
                             target, 
-                            input$reduce_simulations_by_logic, # TRUE or FALSE 
+                            inputparameter$reduce_simulations_by_logic, # TRUE or FALSE 
                             inputparameter$num_cases_per_iteration,
                             inputparameter$total_iter,
                             inputparameter$nburnin,
                             inputparameter$total_nboot,
                             inputparameter$verbose)
+    print(paste("simulation round:",k))
     res_list[[k]] <- out$results
   }
   res = do.call(rbind, res_list)
@@ -58,7 +58,7 @@ sim_output <- function(df,input,inputparameter){
                 biggest = biggest, 
                 smallest = smallest,
                 res = res))
-  } else{
+    } else{
     return(res)
   }
 }

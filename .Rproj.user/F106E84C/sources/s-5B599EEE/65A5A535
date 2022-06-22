@@ -1,0 +1,42 @@
+{
+<<<<<<< Updated upstream:.Rproj.user/F106E84C/sources/s-0592D78E/990E777F
+    "id": "990E777F",
+=======
+    "id": "65A5A535",
+>>>>>>> Stashed changes:.Rproj.user/F106E84C/sources/s-5B599EEE/65A5A535
+    "path": "~/upload/Git/Newest/Glance_sampling/Rscript/run_post_analysis.R",
+    "project_path": "Rscript/run_post_analysis.R",
+    "type": "r_source",
+    "hash": "2011461883",
+    "contents": "",
+    "dirty": false,
+    "created": 1655848405264.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+<<<<<<< Updated upstream:.Rproj.user/F106E84C/sources/s-0592D78E/990E777F
+        "cursorPosition": "10,43",
+        "scrollLine": "4"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1655888061,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1655888061802,
+=======
+        "cursorPosition": "21,3",
+        "scrollLine": "4"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1655847886,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1655847886605,
+>>>>>>> Stashed changes:.Rproj.user/F106E84C/sources/s-5B599EEE/65A5A535
+    "read_only": false,
+    "read_only_alternatives": []
+}

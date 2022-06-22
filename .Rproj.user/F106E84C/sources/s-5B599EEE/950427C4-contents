@@ -1,0 +1,392 @@
+################################################################################
+#
+# active_learning.R
+#
+# INPUT:
+#
+# data: input dataset with variables
+#   - 'caseID': ID for original crash event. 
+#   - 'eoff': glance duration off road after tauinv = 0.2 s (overshot).
+#   - 'acc': acceleration (negative value means positive deceleration).
+#   - 'eoff_acc_prob': probability of (eoff, acc) pair according to baseline distribution.
+#   - 'impact_speed0': impact speed in baseline scenario.
+#   - 'impact_speed1': impact speed  in counter factual scenario (i.e., with counter measure such as AEB).                           
+#   - 'injury_risk0': injury risk in baseline scenario.
+#   - 'injury_risk1': injury risk in counter factual scenario (i.e. with counter measure such as AEB).                           
+#
+# sampling_method: importance sampling scheme (uniform, proportional to 'size', or optimised).
+#
+# target: target of optimisation, only used when sampling_method = "optimised".
+#
+# reduce_simulations_by_logic: Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
+#                              (no crash or maximal impact speed collision) and
+#                              avoid sampling in those regions.
+#
+# num_cases_per_iteration: number of cases to sample from per iteration. 
+#
+# niter: number of iterations.
+#
+# nboot: number of bootstrap replicates used to calculate confidence intervals.
+#
+# verbose: should iteration progress be printed to console? (TRUE/FALSE).
+#
+# plot: should plots of predicted outcomes and sampling probabilities be produced? (TRUE/FALSE).
+#
+#
+# OUTPUT: 
+#
+# List of three datasets:
+#   - results: meta information of simulation, iteration history, estimates with standard errors and squared errors.
+#   - labelled: all labelled data points. 
+#   - crashes: all generated crashes. 
+#
+################################################################################
+
+
+active_learning <- function(data, 
+                            sampling_method = c("uniform", 
+                                                "importance sampling", 
+                                                "optimised"), 
+                            proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
+                                              "propto eoff_acc_prob", 
+                                              "propto eoff_acc_prob * eoff * abs(acc) * maximpact0"), 
+                            target = c("NA", # Only used when sampling_method = "optimised", "NA" otherwise.
+                                       "baseline impact speed distribution", 
+                                       "impact speed reduction", 
+                                       "crash avoidance",
+                                       "injury risk reduction",
+                                       "injury risk reduction, stratified"),
+                            reduce_simulations_by_logic = TRUE, # TRUE or FALSE. 
+                            num_cases_per_iteration = 1,
+                            niter = 500, 
+                            nburnin = 0, # Only used with sampling_method = "optimised".
+                            nboot = 100, 
+                            verbose = FALSE, # TRUE or FALSE.
+                            plot = FALSE) { # TRUE or FALSE.
+  
+  # Make sure packages are loaded.
+  require("boot")
+  require("caret")
+  require("glmnet")
+  require("magrittr")
+  require("randomForest")
+  require("sampling")
+  require("tidyverse")
+  
+  
+  # Check input parameters.
+  sampling_method <- match.arg(sampling_method)
+  proposal_dist <- match.arg(proposal_dist)
+  target <- match.arg(target)
+  
+  # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
+  if ( sampling_method != "importance sampling" ) { 
+    proposal_dist <- "NA"
+  } 
+  
+  # proposal_dist must be specified if sampling_method = "importance sampling".
+  if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
+    stop("Error in calculate_sampling_scheme. sampling_method = importance sampling and proposal_dist = none not allowed.")
+  }
+  
+  # target should be "NA" when sampling_method not equal to "optimised".
+  if ( sampling_method != "optimised" ) { 
+    target <- "NA" 
+  } 
+  
+  # target must be specified if sampling_method = "optimised".
+  if ( sampling_method == "optimised" & target == "NA" ) {
+    stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = none not allowed.")
+  }
+  
+  # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
+  num_cases_per_iteration <- round(num_cases_per_iteration)
+  num_cases_per_iteration <- max(c(num_cases_per_iteration, 1))
+  num_cases_per_iteration <- min(c(num_cases_per_iteration, length(unique(data$caseID))))
+  
+  # nburnin should be positive integer.
+  nburnin <- max(floor(nburnin), 0)
+  
+  
+  # Load helper functions.
+  source("Rscript/calculate_sampling_scheme.R")
+  source("Rscript/estimate_targets.R")
+  source("Rscript/find_crashes.R")
+  source("Rscript/find_max_impact_crashes.R")
+  source("Rscript/find_non_crashes.R")
+  source("Rscript/initialise_grid.R")
+  source("Rscript/KL.R")
+  source("Rscript/safe_cv_glmnet.R")
+  source("Rscript/safe_caret_train.R")
+  source("Rscript/update_predictions.R")
+  
+  
+  # To store results.
+  res <- NULL
+  
+  # Calculate target quantities on full data.
+  ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob")
+  
+ 
+  # Initialise on grid.
+  grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) %>% 
+    mutate(sim_count0 = ifelse( (sampling_method == "uniform" | (sampling_method == "importance sampling" & proposal_dist == "propto eoff_acc_prob")) & !reduce_simulations_by_logic, 0, 1), 
+           sim_count1 = sim_count0)
+ 
+  init <- initialise_grid(data, grid, reduce_simulations_by_logic)
+  
+  labelled <- init$labelled
+  unlabelled <- init$unlabelled 
+
+  
+  # Iterate
+  new_sample <- labelled 
+  for ( i in 1:niter ) {
+    
+    # Print iteration number if verbose = TRUE.
+    if ( verbose ) { print(sprintf("Iteration %d", i)) }
+    
+    
+    # If reduce_simulations_by_logic = TRUE:
+    if ( reduce_simulations_by_logic & nrow(new_sample) > 0 ) {
+      
+      # Find all known non-crashes in unlabelled dataset.
+      ix <- find_non_crashes(new_sample, unlabelled)
+
+      unlabelled %<>% 
+        mutate(non_crash0 = ifelse(row_number() %in% ix$non_crashes0, 1, non_crash0),
+               non_crash1 = ifelse(row_number() %in% ix$non_crashes1, 1, non_crash1),
+               sim_count0 = ifelse(row_number() %in% ix$non_crashes0, 0, sim_count0),
+               sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) %>%
+        filter(!(row_number() %in% ix$non_crashes0)) # Remove certainty non-crashes from unlabelled set.
+
+      # Find all known crashes in unlabelled dataset.
+      ix <- find_crashes(new_sample, unlabelled)
+      
+      unlabelled %<>%
+        mutate(crash0 = ifelse(row_number() %in% ix$crashes0, 1, crash0),
+               crash1 = ifelse(row_number() %in% ix$crashes0, 1, crash1)) 
+      
+      # Find all known maximal impact speed crashes in unlabelled dataset.
+      ix <- find_max_impact_crashes(new_sample, labelled, unlabelled)
+      
+      unlabelled %<>%
+        mutate(max_impact0 = ifelse(row_number() %in% ix$max_impact_crashes0, 1, max_impact0),
+               max_impact1 = ifelse(row_number() %in% ix$max_impact_crashes1, 1, max_impact1),
+               sim_count0 = ifelse(row_number() %in% ix$max_impact_crashes0, 0, sim_count0),
+               sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
+  
+    } # End reduce_simulations_by_logic.
+
+  
+    # Update predictions for cases with new data.
+<<<<<<< Updated upstream:.Rproj.user/F106E84C/sources/s-0592D78E/17135395-contents
+    if ( sampling_method == "optimised" & i > nburnin ) {
+
+        # Calculated predictions.
+        pred <- update_predictions(labelled, unlabelled) 
+        
+        # Add to unlabelled data set.
+        unlabelled %<>% 
+=======
+    if ( sampling_method == "optimised" ) {
+      for ( j in unique(new_sample$caseID) ) {
+        
+        # Calculated predictions.
+        pred <- update_predictions(labelled %>% filter(caseID == j), 
+                                    unlabelled %>% filter(caseID == j)) 
+        
+        # Add to unlabelled data set.
+        unlabelled_j <- unlabelled %>% 
+          filter(caseID == j) %>% 
+>>>>>>> Stashed changes:.Rproj.user/F106E84C/sources/s-5B599EEE/950427C4-contents
+          mutate(collision_prob0_pred = pred$collision_prob0,
+                 collision_prob1_pred = pred$collision_prob1,
+                 impact_speed0_pred = pred$impact_speed_pred0, 
+                 impact_speed1_pred = pred$impact_speed_pred1,
+                 injury_risk0_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed0_pred / 2)))^(-1),
+                 injury_risk1_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed1_pred / 2)))^(-1),
+                 injury_risk0_pred = ifelse(impact_speed0_pred > 0, injury_risk0_pred, 0), # Set injury risk to zero if no collision.
+                 injury_risk1_pred = ifelse(impact_speed1_pred > 0, injury_risk1_pred, 0))
+        
+    }  # End update predictions.
+    
+    
+    # Calculate sampling probabilities. 
+    # Run a few iterations with case-stratified importance sampling before optimisation starts.
+    n_cases <- length(unique(unlabelled$caseID))
+<<<<<<< Updated upstream:.Rproj.user/F106E84C/sources/s-0592D78E/17135395-contents
+    if ( sampling_method == "optimised" & i <= nburnin ) {
+=======
+    if ( sampling_method == "optimised") { 
+      
+      # Run a few iterations with case-stratified importance sampling before optimisation can start.
+      if ( i <= nburnin ) {
+        
+        prob <- calculate_sampling_scheme(unlabelled, labelled, 
+                                          sampling_method = "importance sampling", 
+                                          proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                          target = "NA", 
+                                          num_cases = n_cases)
+        
+      } else {
+        
+        # Combine optimised sampling and importance sampling
+        # with exponential decay on weight for importance sampling
+        # to favour exploration in early iterations.
+        k <- log(2) / n_cases *  num_cases_per_iteration 
+        w <- 1 - exp(-k * (n_cases / num_cases_per_iteration * (nburnin > 0) + i - (nburnin + 1)))
+
+        prob1 <- calculate_sampling_scheme(unlabelled, labelled, sampling_method, proposal_dist, target, num_cases_per_iteration)
+        
+        prob2 <- calculate_sampling_scheme(unlabelled, labelled, 
+                                           sampling_method = "importance sampling", 
+                                           proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0", 
+                                           target = "NA", 
+                                           num_cases = num_cases_per_iteration)
+        
+        prob <- prob1
+        prob$sampling_probability <- w * prob1$sampling_probability + (1 - w) * prob2$sampling_probability
+        prob$case_probability <- w * prob1$case_probability + (1 - w) * prob2$case_probability
+>>>>>>> Stashed changes:.Rproj.user/F106E84C/sources/s-5B599EEE/950427C4-contents
+      
+      prob <- calculate_sampling_scheme(unlabelled, labelled, 
+                                        sampling_method = "importance sampling", 
+                                        proposal_dist = "propto eoff_acc_prob", 
+                                        target = "NA", 
+                                        num_cases = n_cases)
+      
+    } else {
+      
+      # Extract relevant value of sigma (root mean square error of predictions).
+      if ( !exists("pred") ) {
+        sigma <- 0
+      } else if ( target == "baseline impact speed distribution" ) {
+        sigma <- pred$rmse["log_impact_speed0"]
+      } else if ( target == "impact speed reduction" ) {
+        sigma <- pred$rmse["impact_speed_reduction"]
+      } else if ( target %in% c("injury risk reduction", "injury risk reduction, stratified") ) {
+        sigma <- pred$rmse["injury_risk_reduction"]
+      } else if ( target == "crash avoidance" ) {
+        sigma <- 0
+      } else {
+        stop(sprintf("Error in active_learning > !exists(pred). Case when target = %d not implemented.", target))
+      }
+
+      # Calculate sampling scheme.
+      prob <- calculate_sampling_scheme(unlabelled, labelled, 
+                                        sampling_method, 
+                                        proposal_dist, target, 
+                                        num_cases_per_iteration,
+                                        sigma)
+      
+    } 
+    
+    if ( plot ) {
+      plot(unlabelled$eoff, prob$sampling_probability, 
+           col = unlabelled$caseID, 
+           pch = match(unlabelled$acc, sort(unique(unlabelled$acc))), 
+           main = sprintf("Iteration %d", i), 
+           bty = "l")
+    }
+    
+    
+    # Sample cases.
+    cases <- as.numeric(names(table(unlabelled$caseID)))
+    if ( all(prob$case_probability >= (1 - 1e-12)) ) {
+      new_cases <- cases
+    } else {
+      new_cases <- cases[which(UPmaxentropy(prob$case_probability) == 1)]
+    }
+    
+    
+    # Sample variations.
+    ix <- rep(0, nrow(unlabelled)) # Binary selection indicator.
+    for ( j in seq_along(new_cases) ) {
+      
+      jx <- which(unlabelled$caseID == new_cases[j]) 
+      ix[jx] <- as.numeric(rmultinom(n = 1, size = 1, prob = prob$sampling_probability[jx]))
+      
+    }
+    new_wt <- ix / prob$sampling_probability
+    new_wt[is.na(new_wt)] <- 0
+    
+    
+    # Get data for sampled observations.
+    new_sample <- unlabelled %>% 
+      mutate(old_weight = 0, 
+             new_weight = new_wt) %>% 
+      filter(new_weight > 0) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, old_weight, new_weight) %>% 
+      left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
+    
+    
+    # Update labelled set.
+    labelled <- labelled %>%
+      mutate(old_weight = sampling_weight,
+             new_weight = 0) %>% 
+      add_row(new_sample) %>%
+      mutate(sampling_weight = old_weight + (new_weight - old_weight) / i, # Update sampling weights. 
+             final_weight = eoff_acc_prob * sampling_weight) %>%
+      dplyr::select(-old_weight, -new_weight)
+    
+    
+    # Update unlabelled set.
+    unlabelled %<>% 
+      mutate(sim_count0 = ifelse(new_wt > 0, 0, sim_count0),
+             sim_count1 = ifelse(new_wt > 0, 0, sim_count1))
+    
+    
+    # Estimate target quantities.
+    crashes <- labelled %>% filter(impact_speed0 > 0)
+    effective_number_simulations0 <- effective_number_simulations1 <- nrow(labelled)
+    actual_number_simulations0 <- sum(labelled$sim_count0)
+    actual_number_simulations1 <- sum(labelled$sim_count1)
+    
+    if ( nrow(crashes) > 0 ) { # If any crashes have been generated.
+      boot <- boot(crashes, statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), R = nboot)
+      est <- boot$t0 # Estimates.
+      se <- apply(boot$t, 2 , sd) # Standard error of estimates.
+    } else {
+      est <- estimate_targets(crashes) # Returns NaN if crashes is empty set.
+      se <- rep(NA, length(est))
+    }
+    sqerr <- (est - ground_truth)^2 # Squared error with respect to ground truth.
+    names(se) <- paste0(names(est), "_se")
+    names(sqerr) <- paste0(names(est), "_sqerr")
+    
+    
+    newres <- tibble(samping_method = sampling_method,
+                     proposal_dist = proposal_dist,
+                     target = target,
+                     reduce_simulations_by_logic = reduce_simulations_by_logic,
+                     num_cases_per_iteration = num_cases_per_iteration) %>% # Meta-information.
+      add_column(iter = i, 
+                 neff0 = effective_number_simulations0, 
+                 neff1 = effective_number_simulations1, 
+                 neff_tot = effective_number_simulations0 + effective_number_simulations1,
+                 nsim0 = actual_number_simulations0, 
+                 nsim1 = actual_number_simulations1, 
+                 nsim_tot = actual_number_simulations0 + actual_number_simulations1) %>% # Iteration history.
+      add_column(as_tibble(as.list(est))) %>% # Estimates.
+      add_column(as_tibble(as.list(se)))  %>% # Standard errors.
+      add_column(as_tibble(as.list(sqerr))) %>% # Squared errors.
+      add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
+                                          ground_truth["impact_speed0_logSD"],
+                                          est["impact_speed0_logmean"], 
+                                          est["impact_speed0_logSD"]))
+    
+    if ( is.null(res) ) {
+      res <- newres
+    } else {
+      res %<>% 
+        add_row(newres)
+    }
+    
+  } # End active learning.
+  
+  return(list(results = res, 
+              labelled = labelled, 
+              crashes = labelled %>% filter(impact_speed0 > 0)))
+  
+}

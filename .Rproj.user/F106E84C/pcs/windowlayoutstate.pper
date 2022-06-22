@@ -1,12 +1,17 @@
 {
     "left": {
-        "splitterpos": 181,
+<<<<<<< Updated upstream
+        "splitterpos": 357,
         "topwindowstate": "NORMAL",
+=======
+        "splitterpos": 181,
+        "topwindowstate": "HIDE",
+>>>>>>> Stashed changes
         "panelheight": 742,
         "windowheight": 780
     },
     "right": {
-        "splitterpos": 405,
+        "splitterpos": 564,
         "topwindowstate": "NORMAL",
         "panelheight": 742,
         "windowheight": 780

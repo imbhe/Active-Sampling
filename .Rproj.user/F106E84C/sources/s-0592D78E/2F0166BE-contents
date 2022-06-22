@@ -17,7 +17,8 @@ sim_output <- function(df,input,inputparameter){
                             inputparameter$total_iter,
                             inputparameter$nburnin,
                             inputparameter$total_nboot,
-                            inputparameter$verbose)
+                            inputparameter$verbose,
+                            plot = FALSE)
     res_list[[k]] <- out$results
   }
   res = do.call(rbind, res_list)

@@ -1,0 +1,7 @@
+{
+    "installOptions": {
+        "installFromRepository": true,
+        "libraryPath": "C:/Users/XYANG118/OneDrive - Volvo Cars/Documents/R/R-4.1.3/library",
+        "installDependencies": true
+    }
+}
