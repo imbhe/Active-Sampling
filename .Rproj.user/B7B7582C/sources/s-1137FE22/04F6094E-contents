@@ -30,7 +30,7 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   labelled <- labelled0 %>% 
     add_row(labelled1) %>% 
     left_join(maximpact0, by = "caseID") %>% 
-    mutate(caseID = as.factor(caseID))
+    mutate(caseID = factor(caseID, labels = paste0("caseID", sort(unique(caseID)))))
   
   
   # Unlabelled, wide to long format.
@@ -51,8 +51,8 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   unlabelled <- unlabelled0 %>% 
     add_row(unlabelled1) %>% 
     left_join(maximpact0, by = "caseID") %>% 
-    mutate(caseID = as.factor(caseID)) 
-    
+    mutate(caseID = factor(caseID, labels = paste0("caseID", sort(unique(caseID)))))
+  
   
   crash <- unlabelled$crash
   non_crash <- unlabelled$non_crash
@@ -62,7 +62,8 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   
  
   # Prepare data for model fitting with LASSO.
-  form <- ~ -1 + scenario + eoff + acc + caseID*scenario*eoff*acc
+  form <- ~ -1 + scenario + eoff + log(0.1 + eoff) + acc + log(-acc) + 
+    caseID*scenario*eoff*acc + caseID*scenario*log(0.1 + eoff)*log(-acc)
   X <- model.matrix(form, data = labelled)
   newX <- model.matrix(form, data = unlabelled)
   ntrain <- nrow(X)
@@ -75,24 +76,25 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
     
   # Random forest.
   options(warn = -1)
-  rf <- safe_caret_train(impact_speed ~ scenario + caseID + eoff + acc, 
+  rf <- safe_caret_train(log(impact_speed) ~ scenario + caseID + eoff + acc, 
                          data = labelled %>% filter(impact_speed > 0 & impact_speed < ymax),
-                         method = "rf",
-                         tuneLength = 5,
+                         method = "ranger",
+                         num.trees = 100,
+                         tuneLength = 3,
                          trControl = trainControl(method = "cv",
-                                                  number = 10,
+                                                  number = 5,
                                                   search = "random"))
   options(warn = defaultW)
   
   if ( !is.null(rf) ) { # If able to fit model: calculate predictions.
     
     # Prediction on labelled data.
-    yhat1_train <- predict(rf, labelled)
+    yhat1_train <- exp(predict(rf, labelled))
     yhat1_train[yhat1_train <= 0] <- max(min(yhat1_train[yhat1_train > 0]), 0)
     yhat1_train[yhat1_train > ymax] <- ymax
     
     # Prediction unlabelled data.
-    yhat1 <- predict(rf, unlabelled)
+    yhat1 <- exp(predict(rf, unlabelled))
     yhat1[yhat1 <= 0] <- max(min(yhat1[yhat1 > 0]), 0)
     yhat1[yhat1 > ymax] <- ymax
     
@@ -106,22 +108,24 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   
   # LASSO regression.
   ix <- which(y > 0 & y < ymax)
-  nfolds <- ifelse(length(ix) < 10, length(ix), 10)
+  nfolds <- ifelse(length(ix) < 10, length(ix), 5)
   
   options(warn = -1)
-  lasso <- safe_cv_glmnet(X[ix, ], y[ix], grouped = FALSE, nfolds = nfolds, 
+  lasso <- safe_cv_glmnet(X[ix, ], log(y[ix]), 
+                          grouped = FALSE, nfolds = nfolds, 
+                          nlambda = 50, maxit = 1e3,
                           penalty.factor = c(0, rep(1, ncol(X) - 1))) # No penalty on main effect of counter-measure.
   options(warn = defaultW)
   
   if ( !is.null(lasso) ) { # If able to fit model: calculate predictions.
     
     # Prediction on labelled data.
-    yhat2_train <- as.numeric(predict(lasso, newx = X, s = "lambda.1se", type = "response"))
+    yhat2_train <- exp(as.numeric(predict(lasso, newx = X, s = "lambda.1se", type = "response")))
     yhat2_train[yhat2_train <= 0] <- max(min(yhat2_train[yhat2_train > 0]), 0)
     yhat2_train[yhat2_train > ymax] <- ymax
     
     # Prediction unlabelled data.
-    yhat2 <- as.numeric(predict(lasso, newx = newX, s = "lambda.1se", type = "response"))
+    yhat2 <- exp(as.numeric(predict(lasso, newx = newX, s = "lambda.1se", type = "response")))
     yhat2[yhat2 <= 0] <- max(min(yhat2[yhat2 > 0]), 0)
     yhat2[yhat2 > ymax] <- ymax
     
@@ -138,24 +142,26 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   # Random forest.
   options(warn = -1)
   sink("msg.txt")
-  rf <- safe_caret_train(as.factor(impact_speed > 0) ~ scenario + caseID + eoff + acc, 
+  rf <- safe_caret_train(factor(impact_speed > 0, labels = paste0("Y", 0:1)) ~ scenario + caseID + eoff + acc, 
                          data = labelled,
-                         method = "rf",
-                         tuneLength = 5,
+                         method = "ranger",
+                         num.trees = 100,
+                         tuneLength = 3,
                          trControl = trainControl(method = "cv",
-                                                  number = 10,
-                                                  search = "random"))
+                                                  number = 5,
+                                                  search = "random",
+                                                  classProbs = TRUE))
   sink()
   options(warn = defaultW)
   
   if ( !is.null(rf) ) { # If able to fit model: calculate predictions.
     
     # Prediction on labelled data.
-    ppos1_train <- as.numeric(predict(rf, labelled, type = "prob")[, 2])
+    ppos1_train <- predict(rf, labelled, type = "prob")$Y1
     ppos1_train[ppos1_train <= 0] <- min(ppos1_train[ppos1_train > 0])
     
     # Prediction on unlabelled data.
-    ppos1 <- as.numeric(predict(rf, unlabelled, type = "prob")[, 2])
+    ppos1 <- predict(rf, unlabelled, type = "prob")$Y1
     ppos1[ppos1 <= 0] <- min(ppos1[ppos1 > 0])
     
   } else { # If unable to fit model: set probabilities manually.
@@ -179,8 +185,8 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   } # End !is.null(rf).
 
   
-  # Fractional polynomial LASSO logistic regression with outcome-stratified cross-validation. 
-  nstrata <- min(min(table(y > 0)), 10)
+  # LASSO logistic regression with outcome-stratified cross-validation. 
+  nstrata <- min(min(table(y > 0)), 5)
   events <- which(y > 0) 
   nonevents <- which(!(y > 0)) 
   foldid <- rep(0, length(y))
@@ -188,7 +194,9 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   foldid[nonevents] <- rep(1:nstrata, length(nonevents))[1:length(nonevents)]
   
   options(warn = -1)
-  lasso <- safe_cv_glmnet(X, as.factor(y > 0), family = "binomial", grouped = FALSE, foldid = foldid, 
+  lasso <- safe_cv_glmnet(X, as.factor(y > 0), family = "binomial", 
+                          grouped = FALSE, foldid = foldid, 
+                          nlambda = 50, maxit = 1e3,
                           penalty.factor = c(0, rep(1, ncol(X) - 1))) # No penalty on main effect of counter-measure.
   options(warn = defaultW)
   
@@ -215,24 +223,27 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   # Random forest.
   options(warn = -1)
   sink("msg.txt")
-  rf <- safe_caret_train(as.factor(impact_speed == ymax) ~ scenario + caseID + eoff + acc, 
+  rf <- safe_caret_train(factor(impact_speed == ymax, labels = paste0("Y", 0:1)) ~ 
+                           scenario + caseID + eoff + acc, 
                          data = labelled %>% mutate(ymax = ymax),
-                         method = "rf",
-                         tuneLength = 5,
+                         method = "ranger",
+                         num.trees = 100,
+                         tuneLength = 3,
                          trControl = trainControl(method = "cv",
-                                                  number = 10,
-                                                  search = "random"))
+                                                  number = 5,
+                                                  search = "random",
+                                                  classProbs = TRUE))
   sink()
   options(warn = defaultW)
   
   if ( !is.null(rf) ) { # If able to fit model: calculate predictions.
     
     # Prediction on labelled data.
-    pmax1_train <- predict(rf, labelled, type = "prob")[, 2]
+    pmax1_train <- predict(rf, labelled, type = "prob")$Y1
     pmax1_train[pmax1_train] <- min(pmax1_train[pmax1_train > 0])
     
     # Prediction on unlabelled data.
-    pmax1 <- predict(rf, unlabelled, type = "prob")[, 2]
+    pmax1 <- predict(rf, unlabelled, type = "prob")$Y1
     pmax1[pmax1 <= 0] <- min(pmax1[pmax1 > 0])
     
   } else { # If unable to fit model: set probabilities manually.
@@ -250,8 +261,8 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   }
 
   
-  # Fractional polynomial LASSO logistic regression with outcome-stratified cross-validation.
-  nstrata <- min(min(table(y == ymax)), 10)
+  # LASSO logistic regression with outcome-stratified cross-validation.
+  nstrata <- min(min(table(y == ymax)), 5)
   events <- which(y == ymax) 
   nonevents <- which(!(y == ymax)) 
   foldid <- rep(0, length(y))
@@ -259,7 +270,9 @@ update_predictions <- function(labelled, unlabelled, plot = FALSE) {
   foldid[nonevents] <- rep(1:nstrata, length(nonevents))[1:length(nonevents)]
   
   options(warn = -1)
-  lasso <- safe_cv_glmnet(X, as.factor(y == ymax), family = "binomial", grouped = FALSE, foldid = foldid, 
+  lasso <- safe_cv_glmnet(X, as.factor(y == ymax), family = "binomial", 
+                          grouped = FALSE, foldid = foldid, 
+                          nlambda = 50, maxit = 1e3,
                           penalty.factor = c(0, rep(1, ncol(X) - 1))) # No penalty on main effect of counter-measure.
   options(warn = defaultW)
   
