@@ -6,7 +6,7 @@ source("Rscript/active_learning.R")
 source("Rscript/sim_output.R")
 load("Data/glance_dec_data_test.R")
 
-sampling_input <- read_excel("Data/Sampling_input2.xlsx")
+sampling_input <- read_excel("Data/Sampling_input.xlsx")
 # have another table input for simulation number choice
 param_input <- read_excel("Data/param_input.xlsx")
 add_effn = 30
