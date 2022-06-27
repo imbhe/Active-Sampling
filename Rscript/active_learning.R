@@ -119,8 +119,12 @@ active_learning <- function(data,
     model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     model_update_iterations <- as.numeric(na.omit(model_update_iterations))
     model_update_iterations <- unique(model_update_iterations[model_update_iterations > max(1, nburnin)])
+<<<<<<< Updated upstream
     #print(model_update_iterations)
     
+=======
+
+>>>>>>> Stashed changes
     if ( verbose ) {
       print(sprintf("Predictions updated at iterations %s", paste(model_update_iterations, collapse = ", ")))
       print(sprintf("after %s observations", paste(n_seq[model_update_iterations - 1], collapse = ", ")))
@@ -313,7 +317,7 @@ active_learning <- function(data,
 
     
     # Estimate target quantities.
-    crashes <- labelled %>% filter(impact_speed0 > 0)
+    crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
     effective_number_simulations0 <- effective_number_simulations1 <- nrow(labelled)
     actual_number_simulations0 <- sum(labelled$sim_count0)
     actual_number_simulations1 <- sum(labelled$sim_count1)

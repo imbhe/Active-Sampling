@@ -1,2 +1,0 @@
-impact_speed0_sqresid <- with(labelled, (impact_speed - ypred_train)^2)
-sqrt(mean(impact_speed0_sqresid))
