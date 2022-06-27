@@ -1,0 +1,26 @@
+{
+    "id": "36F740F3",
+    "path": "~/GitHub/Glance_sampling/Rscript/active_learning.R",
+    "project_path": "Rscript/active_learning.R",
+    "type": "r_source",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1656304519439.0,
+    "source_on_save": false,
+    "relative_order": 3,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "38,81",
+        "scrollLine": "11"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1656335371,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1656335371570,
+    "read_only": false,
+    "read_only_alternatives": []
+}
