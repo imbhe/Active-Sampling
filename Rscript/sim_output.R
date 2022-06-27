@@ -1,5 +1,6 @@
 sim_output <- function(df,input,inputparameter){
   total_iter = inputparameter$total_iter
+  num_cases_per_iteration = inputparameter$num_cases_per_iteration
   Sim_n = inputparameter$Sim_n
   target = input$target
   proposal_dist = input$proposal_dist
@@ -7,18 +8,19 @@ sim_output <- function(df,input,inputparameter){
   group = input$group
   res_list <- replicate(Sim_n, data.frame())
   for (k in 1:Sim_n){
+    print(paste("simulation",k,"start,","reduced logic is",input$reduce_simulations_by_logic,", number per iteration:",num_cases_per_iteration,",total iteration:",total_iter))
     set.seed(k)
-    print(paste("simulation round:",k))
     out <- active_learning (df, sampling_method, 
                             proposal_dist,
                             target, 
-                            reduce_simulations_by_logic = input$reduce_simulations_by_logic, # TRUE or FALSE 
-                            inputparameter$num_cases_per_iteration,
-                            inputparameter$total_iter,
+                            input$reduce_simulations_by_logic, # TRUE or FALSE 
+                            num_cases_per_iteration,
+                            total_iter,
                             inputparameter$nburnin,
                             inputparameter$total_nboot,
                             inputparameter$verbose,
                             plot = FALSE)
+    #print(out$results$neff0)
     res_list[[k]] <- out$results
   }
   res = do.call(rbind, res_list)

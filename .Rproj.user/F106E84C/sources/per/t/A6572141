@@ -1,26 +1,26 @@
 {
     "id": "A6572141",
-    "path": "~/upload/Git/Newest/Glance_sampling/Rscript/sim_output.R",
+    "path": "~/upload/Git/Newest/Glance_sampling/Glance_sampling/Rscript/sim_output.R",
     "project_path": "Rscript/sim_output.R",
     "type": "r_source",
-    "hash": "908271810",
+    "hash": "3352097655",
     "contents": "",
     "dirty": false,
     "created": 1655889169416.0,
     "source_on_save": false,
-    "relative_order": 1,
+    "relative_order": 2,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "14,58",
-        "scrollLine": "0"
+        "cursorPosition": "22,5",
+        "scrollLine": "16"
     },
     "folds": "",
-    "lastKnownWriteTime": 1655889341,
+    "lastKnownWriteTime": 1656333179,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1655889341984,
+    "last_content_update": 1656333179803,
     "read_only": false,
     "read_only_alternatives": []
 }

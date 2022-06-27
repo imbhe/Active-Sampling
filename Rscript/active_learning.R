@@ -119,7 +119,7 @@ active_learning <- function(data,
     model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     model_update_iterations <- as.numeric(na.omit(model_update_iterations))
     model_update_iterations <- unique(model_update_iterations[model_update_iterations > max(1, nburnin)])
-    print(model_update_iterations)
+    #print(model_update_iterations)
     
     if ( verbose ) {
       print(sprintf("Predictions updated at iterations %s", paste(model_update_iterations, collapse = ", ")))

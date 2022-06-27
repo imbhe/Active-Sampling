@@ -69,7 +69,7 @@ active_learning <- function(data,
   require("caret")
   require("glmnet")
   require("magrittr")
-  require("randomForest")
+  require("ranger")
   require("sampling")
   require("tidyverse")
   
@@ -107,6 +107,27 @@ active_learning <- function(data,
   # nburnin should be positive integer.
   nburnin <- max(floor(nburnin), 0)
   
+  # Number of cases in input dataset.
+  n_cases <- length(unique(df$caseID))
+  
+  if ( sampling_method == "optimised" ) {
+    
+    # Prediction models will be updated every when n_update observations have been collected.
+    # Find corresponding iteration indices model_update_iterations.
+    n_update <- c(seq(10, 100, 10), seq(150, 500, 50), seq(600, 1000, 100), seq(1500, 5000, 500), seq(6000, 10000, 1000))
+    n_seq <- cumsum(c(rep(n_cases, nburnin), rep(num_cases_per_iteration, niter - nburnin)))
+    model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
+    model_update_iterations <- as.numeric(na.omit(model_update_iterations))
+    model_update_iterations <- unique(model_update_iterations[model_update_iterations > max(1, nburnin)])
+    #print(model_update_iterations)
+    
+    if ( verbose ) {
+      print(sprintf("Predictions updated at iterations %s", paste(model_update_iterations, collapse = ", ")))
+      print(sprintf("after %s observations", paste(n_seq[model_update_iterations - 1], collapse = ", ")))
+    }
+    
+  }
+
   
   # Load helper functions.
   source("Rscript/calculate_sampling_scheme.R")
@@ -133,7 +154,7 @@ active_learning <- function(data,
     mutate(sim_count0 = ifelse( (sampling_method == "uniform" | (sampling_method == "importance sampling" & proposal_dist == "propto eoff_acc_prob")) & !reduce_simulations_by_logic, 0, 1), 
            sim_count1 = sim_count0)
  
-  init <- initialise_grid(data, grid, reduce_simulations_by_logic)
+  init <- initialise_grid(data, grid, sampling_method, target, reduce_simulations_by_logic)
   
   labelled <- init$labelled
   unlabelled <- init$unlabelled 
@@ -180,10 +201,12 @@ active_learning <- function(data,
 
   
     # Update predictions for cases with new data.
-    if ( sampling_method == "optimised" & i > nburnin ) {
+    if ( sampling_method == "optimised" && i %in% model_update_iterations) {
 
+        if ( verbose ) { print("Update predictions.") }
+      
         # Calculated predictions.
-        pred <- update_predictions(labelled, unlabelled) 
+        pred <- update_predictions(labelled, unlabelled, plot = plot) 
         
         # Add to unlabelled data set.
         unlabelled %<>% 
@@ -200,9 +223,8 @@ active_learning <- function(data,
     
     
     # Calculate sampling probabilities. 
-    # Run a few iterations with case-stratified importance sampling before optimisation starts.
-    n_cases <- length(unique(unlabelled$caseID))
-    if ( sampling_method == "optimised" & i <= nburnin ) {
+    # Run nburnin iterations with case-stratified importance sampling before optimisation starts.
+    if ( sampling_method == "optimised" && (i <= nburnin | !exists("pred")) ) {
       
       prob <- calculate_sampling_scheme(unlabelled, labelled, 
                                         sampling_method = "importance sampling", 
@@ -278,7 +300,7 @@ active_learning <- function(data,
     # Update labelled set.
     labelled <- labelled %>%
       mutate(old_weight = sampling_weight,
-             new_weight = 0) %>% 
+             new_weight = 1) %>% 
       add_row(new_sample) %>%
       mutate(sampling_weight = old_weight + (new_weight - old_weight) / i, # Update sampling weights. 
              final_weight = eoff_acc_prob * sampling_weight) %>%
@@ -287,9 +309,8 @@ active_learning <- function(data,
     
     # Update unlabelled set.
     unlabelled %<>% 
-      mutate(sim_count0 = ifelse(new_wt > 0, 0, sim_count0),
-             sim_count1 = ifelse(new_wt > 0, 0, sim_count1))
-    
+      filter(new_wt <= 0)
+
     
     # Estimate target quantities.
     crashes <- labelled %>% filter(impact_speed0 > 0)
