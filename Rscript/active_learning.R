@@ -271,9 +271,10 @@ active_learning <- function(data,
     if ( all(prob$case_probability >= (1 - 1e-12)) ) {
       new_cases <- cases
     } else {
+      prob$case_probability[prob$case_probability > (1 - 1e-12)] <- 1
       new_cases <- cases[which(UPmaxentropy(prob$case_probability) == 1)]
     }
-    
+
     
     # Sample variations.
     ix <- rep(0, nrow(unlabelled)) # Binary selection indicator.
