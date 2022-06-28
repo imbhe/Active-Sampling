@@ -268,10 +268,10 @@ active_learning <- function(data,
     
     # Sample cases.
     cases <- as.numeric(names(table(unlabelled$caseID)))
-    if ( all(prob$case_probability >= (1 - 1e-12)) ) {
+    prob$case_probability[prob$case_probability >= (1 - 1e-3)] <- 1
+    if ( all(prob$case_probability == 1) ) {
       new_cases <- cases
     } else {
-      prob$case_probability[prob$case_probability > (1 - 1e-12)] <- 1
       new_cases <- cases[which(UPmaxentropy(prob$case_probability) == 1)]
     }
 
