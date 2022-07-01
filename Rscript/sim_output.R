@@ -10,7 +10,7 @@ sim_output <- function(df,input,inputparameter){
   res_list <- replicate(Sim_n, data.frame())
   for (k in 1:Sim_n){
     print(paste("simulation",k,"start,","reduced logic is",input$reduce_simulations_by_logic,", number per iteration:",num_cases_per_iteration,",total iteration:",total_iter))
-    set.seed(k)
+    #set.seed(k)
     out <- active_learning (df, sampling_method, 
                             proposal_dist,
                             target, 

@@ -14,7 +14,8 @@ estimate_targets <- function(data, weightvar) {
   
   impact_speed0_logmean <- with(crashes, sum(w * log(impact_speed0)) / sum(w))
   impact_speed0_logSD <- with(crashes, sqrt(sum(w * (log(impact_speed0) - impact_speed0_logmean)^2) / sum(w)))
-
+  
+  
   return(c("mean_impact_speed0" = mean_impact_speed0, 
            "mean_impact_speed1" = mean_impact_speed1, 
            "absolute_impact_speed_reduction" = absolute_impact_speed_reduction, 
