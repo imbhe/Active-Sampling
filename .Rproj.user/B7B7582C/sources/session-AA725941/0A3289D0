@@ -1,0 +1,26 @@
+{
+    "id": "0A3289D0",
+    "path": "~/GitHub/Glance_sampling/Rscript/run_post_analysis.R",
+    "project_path": "Rscript/run_post_analysis.R",
+    "type": "r_source",
+    "hash": "4072840091",
+    "contents": "",
+    "dirty": false,
+    "created": 1656666146547.0,
+    "source_on_save": false,
+    "relative_order": 8,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "0,0",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1656662859,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1656662859,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -59,6 +59,9 @@ calculate_sampling_scheme <- function(unlabelled,
       left_join(maximpact0, by = "caseID")
   }
   
+  # Set to one, i.e., assume all simulations will produce a crash under baseline scenario.
+  collision_prob0_pred <- 1
+  
   
   # Calculate 'size'.
   if ( sampling_method == "uniform" ) {

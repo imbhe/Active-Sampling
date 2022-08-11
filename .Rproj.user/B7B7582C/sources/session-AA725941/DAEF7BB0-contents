@@ -1,20 +1,16 @@
-initialise_grid <- function(data, grid, sampling_method, target, reduce_simulations_by_logic) {
+initialise_grid <- function(data, grid, reduce_simulations_by_logic) {
   
   # Labelled dataset.
   labelled <- data %>% 
-    left_join(grid, by = c("eoff", "acc")) %>%
-    filter(sim_count0 == 1) %>% 
-    mutate(sim_count1 = as.numeric((impact_speed0 != 0)), 
-           sampling_weight = ifelse(sim_count0 == 1, 1, 0),
-           final_weight = eoff_acc_prob * sampling_weight) %>% 
-    filter(sampling_weight > 0)
-  
+    right_join(grid, by = c("eoff", "acc")) %>%
+    mutate(sim_count0 = 0, 
+           sim_count1 = 0, 
+           sampling_weight = 0) 
   
   # Unlabelled dataset.
   n <- nrow(data)
   unlabelled <- data %>% 
     left_join(grid, by = c("eoff", "acc")) %>% 
-    filter(is.na(sim_count0) | sim_count0 != 1) %>%
     mutate(collision_prob0_pred = NA_real_, 
            collision_prob1_pred = NA_real_, 
            impact_speed0_pred = NA_real_,
