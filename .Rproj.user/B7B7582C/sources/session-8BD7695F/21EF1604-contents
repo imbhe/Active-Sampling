@@ -60,7 +60,7 @@ calculate_sampling_scheme <- function(unlabelled,
   }
   
   # Set to one, i.e., assume all simulations will produce a crash under baseline scenario.
-  collision_prob0_pred <- 1
+  # collision_prob0_pred <- 1
   
   
   # Calculate 'size'.
