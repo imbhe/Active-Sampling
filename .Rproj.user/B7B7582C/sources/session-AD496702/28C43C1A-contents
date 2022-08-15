@@ -8,8 +8,8 @@ for (i in 1:1) {
   tic()
   print(sprintf("%d", i))
   res <- active_learning(df, 
-                         sampling_method = "optimised", 
-                         proposal_dist = "propto eoff_acc_prob",
+                         sampling_method = "uniform", 
+                         proposal_dist = "propto eoff_acc_prob * eoff * abs(acc) * maximpact0",
                          target = "impact speed reduction", 
                          reduce_simulations_by_logic = FALSE,
                          num_cases_per_iteration = 2, 
