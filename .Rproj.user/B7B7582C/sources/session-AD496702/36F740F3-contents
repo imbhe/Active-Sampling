@@ -241,7 +241,9 @@ active_learning <- function(data,
         
       } else if ( sampling_method == "importance sampling" ) { # Importance sampling.
         
+        prob$sampling_probability[prob$sampling_probability >= (1 - 1e-3)] <- 1
         jx <- which(UPmaxentropy(prob$sampling_probability) == 1)
+        
       }
       
       ix[jx] <- 1
