@@ -1,20 +1,34 @@
 estimate_targets <- function(data, weightvar) {
   data$w <- data[, weightvar]
-  crashes <- data %>% filter(impact_speed0 > 0 & w > 0)
-  
-  mean_impact_speed0 <- with(crashes, sum(w * (impact_speed0)) / sum(w))
-  mean_impact_speed1 <- with(crashes, sum(w * (impact_speed1)) / sum(w))
-  absolute_impact_speed_reduction <- mean_impact_speed1 - mean_impact_speed0
-  relative_impact_speed_reduction <- 1 - mean_impact_speed1 / mean_impact_speed0
-  mean_injury_risk0 <- with(crashes, sum(w * (injury_risk0)) / sum(w))
-  mean_injury_risk1 <- with(crashes, sum(w * (injury_risk1)) / sum(w))
-  absolute_injury_risk_reduction <- mean_injury_risk1 - mean_injury_risk0
-  relative_injury_risk_reduction <- 1 - mean_injury_risk1 / mean_injury_risk0
-  proportion_crashes_avoided <- 1 - with(crashes, sum(w * (impact_speed1 > 0)) / sum(w))
-  
-  impact_speed0_logmean <- with(crashes, sum(w * log(impact_speed0)) / sum(w))
-  impact_speed0_logSD <- with(crashes, sqrt(sum(w * (log(impact_speed0) - impact_speed0_logmean)^2) / sum(w)))
-  
+  if(dim(data)[1] != 0){
+    crashes <- data %>% filter(impact_speed0 > 0 & w > 0)
+    
+    mean_impact_speed0 <- with(crashes, sum(w * (impact_speed0)) / sum(w))
+    mean_impact_speed1 <- with(crashes, sum(w * (impact_speed1)) / sum(w))
+    absolute_impact_speed_reduction <- mean_impact_speed1 - mean_impact_speed0
+    relative_impact_speed_reduction <- 1 - mean_impact_speed1 / mean_impact_speed0
+    mean_injury_risk0 <- with(crashes, sum(w * (injury_risk0)) / sum(w))
+    mean_injury_risk1 <- with(crashes, sum(w * (injury_risk1)) / sum(w))
+    absolute_injury_risk_reduction <- mean_injury_risk1 - mean_injury_risk0
+    relative_injury_risk_reduction <- 1 - mean_injury_risk1 / mean_injury_risk0
+    proportion_crashes_avoided <- 1 - with(crashes, sum(w * (impact_speed1 > 0)) / sum(w))
+    
+    impact_speed0_logmean <- with(crashes, sum(w * log(impact_speed0)) / sum(w))
+    impact_speed0_logSD <- with(crashes, sqrt(sum(w * (log(impact_speed0) - impact_speed0_logmean)^2) / sum(w)))
+  }else{
+    mean_impact_speed0 <- 0
+    mean_impact_speed1 <- 0
+    absolute_impact_speed_reduction <- mean_impact_speed1 - mean_impact_speed0
+    relative_impact_speed_reduction <- 1 - mean_impact_speed1 / mean_impact_speed0
+    mean_injury_risk0 <- 0
+    mean_injury_risk1 <- 0
+    absolute_injury_risk_reduction <- mean_injury_risk1 - mean_injury_risk0
+    relative_injury_risk_reduction <- 1 - mean_injury_risk1 / mean_injury_risk0
+    proportion_crashes_avoided <- 1
+    
+    impact_speed0_logmean <- 1
+    impact_speed0_logSD <- 1
+  }
   
   return(c("mean_impact_speed0" = mean_impact_speed0, 
            "mean_impact_speed1" = mean_impact_speed1, 
