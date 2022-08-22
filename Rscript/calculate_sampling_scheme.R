@@ -60,7 +60,7 @@ calculate_sampling_scheme <- function(unlabelled,
   }
   
   # Set to one, i.e., assume all simulations will produce a crash under baseline scenario.
-  # collision_prob0_pred <- 1
+  collision_prob0_pred <- 1
   
   
   # Calculate 'size'.
@@ -100,7 +100,9 @@ calculate_sampling_scheme <- function(unlabelled,
       
     } else if ( target == "crash avoidance" ) {
       
-      size <- with(unlabelled, sqrt(1 - collision_prob1_pred))
+      crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
+      rr <- 1 - estimate_targets(crashes)["proportion crashes avoided"]
+      size <- with(unlabelled, sqrt(rr^2 - collision_prob1_pred * (2 * rr - 1)))
 
     } else if ( target == "injury risk reduction" ) {
       

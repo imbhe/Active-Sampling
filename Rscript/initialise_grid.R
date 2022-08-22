@@ -5,7 +5,8 @@ initialise_grid <- function(data, grid, reduce_simulations_by_logic) {
     right_join(grid, by = c("eoff", "acc")) %>%
     mutate(sim_count0 = 0, 
            sim_count1 = 0, 
-           sampling_weight = 0) 
+           sampling_weight = 0, 
+           final_weight = 0) 
   
   # Unlabelled dataset.
   n <- nrow(data)
