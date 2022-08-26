@@ -3,17 +3,17 @@
 library("readxl")
 source("Rscript/active_learning.R")
 source("Rscript/sim_output.R")
-load("Data/glance_dec_data4.R")
+load("Data/glance_dec_data7.R")
 sampling_input <- read_excel("Data/Sampling_input2.xlsx")
 param_input <- read_excel("Data/param_input.xlsx")
-add_effn = 500
+add_effn = 1000
 nburnin = 0
 verbose = FALSE
 
 total_iter = ceiling(add_effn/param_input$num_cases_per_iteration)
 res_total= replicate(length(param_input$Sim_n), data.frame())
 
-
+8
 for(j in 1:length(param_input$Sim_n)){
   inputparameter <- data.frame(param_input$num_cases_per_iteration[j],total_iter[j], nburnin,param_input$total_nboot[j],verbose,param_input$Sim_n[j])
   colnames(inputparameter) <- c("num_cases_per_iteration","total_iter", "nburnin","total_nboot","verbose","Sim_n")
@@ -29,7 +29,7 @@ for(j in 1:length(param_input$Sim_n)){
   res_total[[j]] <- res_top_loop
 }  
 
-save(res_total, file = "Data/New_sim_results20.R")
+save(res_total, file = "Data/New_sim_results23.R")
 
 
 

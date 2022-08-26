@@ -3,7 +3,7 @@ library("tidyverse")
 library("ggplot2")
 library("ggpubr")
 library("scales")
-load("Data/New_sim_results18.R")
+load("Data/New_sim_results22.R")
 fcount <- 1
 param_input <- read_excel("Data/param_input.xlsx")
 sampling_input <- read_excel("Data/Sampling_input2.xlsx")
