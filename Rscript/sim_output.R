@@ -40,11 +40,13 @@ sim_output <- function(df,input,inputparameter){
     aver$absolute_impact_speed_reduction_sqerr[p] = sqrt(mean(res$absolute_impact_speed_reduction_sqerr[index[p,]]))
     aver$proportion_crashes_avoided_sqerr[p] = sqrt(mean(res$proportion_crashes_avoided_sqerr[index[p,]]))
     aver$absolute_injury_risk_reduction_sqerr[p] = sqrt(mean(res$absolute_injury_risk_reduction_sqerr[index[p,]]))
+    aver$impact_speed0_KLdiv_sqerr[p] = sqrt(mean(res$impact_speed0_KLdiv[index[p,]]))
     
     aver$sd_mean_impact_speed0_sqerr[p] = sqrt(var(res$mean_impact_speed0_sqerr[index[p,]]))
     aver$sd_absolute_impact_speed_reduction_sqerr[p] = sqrt(var(res$absolute_impact_speed_reduction_sqerr[index[p,]]))
     aver$sd_proportion_crashes_avoided_sqerr[p] = sqrt(var(res$proportion_crashes_avoided_sqerr[index[p,]]))
     aver$sd_absolute_injury_risk_reduction_sqerr[p] = sqrt(var(res$absolute_injury_risk_reduction_sqerr[index[p,]]))
+    
     
     biggest$group[p] = group
     biggest$reduce_simulations_by_logic[p] = reduce_simulations_by_logic

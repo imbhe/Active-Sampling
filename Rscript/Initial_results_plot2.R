@@ -3,7 +3,7 @@ library("tidyverse")
 library("ggplot2")
 library("ggpubr")
 library("scales")
-load("Data/New_sim_results22.R")
+load("Data/New_sim_results25.R")
 fcount <- 1
 param_input <- read_excel("Data/param_input.xlsx")
 sampling_input <- read_excel("Data/Sampling_input2.xlsx")
@@ -34,26 +34,26 @@ os_iter = unique(sub_sim1[sub_sim1$sampling_method != "importance sampling",]$it
 plot_iter = intersect(is_iter,os_iter)
 groups = sampling_input$group[1:5]
 optimised_group1 = aver_sum1[aver_sum1$group == "baseline impact speed distribution" |
-                            aver_sum1$group == "impact speed reduction"|
-                              aver_sum1$group == "crash avoidance" |
-                              aver_sum1$group == "injury risk reduction",]
+                               aver_sum1$group == "impact speed reduction"|
+                               aver_sum1$group == "crash avoidance" |
+                               aver_sum1$group == "injury risk reduction",]
 
 # fix the label 
 # try to install the package :install.packages("ggpubr")
-g1 <- ggplot(aver_sum1, aes(x = neff0,y=mean_impact_speed0_sqerr,
+g1 <- ggplot(aver_sum1, aes(x = neff0,y=impact_speed0_KLdiv_sqerr,
                             colour = group, linetype = reduce_simulations_by_logic,
                             group = interaction(group, reduce_simulations_by_logic))) +
   #geom_point(size = 2) +
   geom_line(size = 1) +
   #xlim(100, 250) +
   #ylim(0,5) + 
-  labs(x = "Needed simulation number", y = "RMSE of Impact speed",
+  labs(x = "Needed simulation number", y = "RMSE of impact_speed0_KLdiv",
        colour = NULL, linetype= NULL)+
   theme(axis.title.x = element_text(vjust = 0, size = 15),
         axis.title.y = element_text(vjust = 2, size = 15),
         axis.text = element_text(size = 12),
         legend.position="top")+
-  ggtitle("RMSE of Impact speed for different sampling methods")
+  ggtitle("RMSE of impact_speed0_KLdiv for different sampling methods")
 
 g2 <- ggplot(aver_sum1, aes(x = neff0,y=absolute_impact_speed_reduction_sqerr,
                             colour = group, linetype = reduce_simulations_by_logic,
@@ -109,20 +109,20 @@ fcount <- fcount + 1
 ggsave(sprintf("Output/fig%d.png", fcount), g4, dpi = 1000, width = 270, height = 270, unit = "mm")
 fcount <- fcount + 1
 ###############
-g1 <- ggplot(aver_sum1, aes(x = neff0,y=mean_impact_speed0_sqerr,
+g1 <- ggplot(aver_sum1, aes(x = neff0,y=impact_speed0_KLdiv_sqerr,
                             colour = group, linetype = reduce_simulations_by_logic,
                             group = interaction(group, reduce_simulations_by_logic))) +
   #geom_point(size = 2) +
   geom_line(size = 1) +
   xlim(100, 500) +
   ylim(0,3) + 
-  labs(x = "Needed simulation number", y = "RMSE of Impact speed",
+  labs(x = "Needed simulation number", y = "RMSE of impact_speed0_KLdiv",
        colour = NULL, linetype = NULL)+
   theme(axis.title.x = element_text(vjust = 0, size = 15),
         axis.title.y = element_text(vjust = 2, size = 15),
         axis.text = element_text(size = 12),
         legend.position="top")+
-  ggtitle("RMSE of Impact speed for different sampling methods")
+  ggtitle("RMSE of impact_speed0_KLdiv for different sampling methods")
 
 g2 <- ggplot(aver_sum1, aes(x = neff0,y=absolute_impact_speed_reduction_sqerr,
                             colour = group, linetype = reduce_simulations_by_logic,
@@ -178,7 +178,7 @@ fcount <- fcount + 1
 ggsave(sprintf("Output/fig%d.png", fcount), g4, dpi = 1000, width = 270, height = 270, unit = "mm")
 fcount <- fcount + 1
 ##############
-g1 <- ggplot(aver_sum1, aes(x = neff0,y=mean_impact_speed0_sqerr,
+g1 <- ggplot(aver_sum1, aes(x = neff0,y=impact_speed0_KLdiv_sqerr,
                             colour = group, linetype = reduce_simulations_by_logic,
                             group = interaction(group, reduce_simulations_by_logic))) +
   #geom_point(size = 2) +
@@ -187,13 +187,13 @@ g1 <- ggplot(aver_sum1, aes(x = neff0,y=mean_impact_speed0_sqerr,
   scale_y_continuous(trans = log10_trans(),
                      breaks = trans_breaks("log10", function(x) 10^x),
                      labels = trans_format("log10", math_format(10^.x))) +
-  labs(x = "Needed simulation number", y = "RMSE of Impact speed",
+  labs(x = "Needed simulation number", y = "RMSE of impact_speed0_KLdiv",
        colour = NULL, linetype = NULL)+
   theme(axis.title.x = element_text(vjust = 0, size = 15),
         axis.title.y = element_text(vjust = 2, size = 15),
         axis.text = element_text(size = 12),
         legend.position="top")+
-  ggtitle("RMSE of Impact speed for different sampling methods")
+  ggtitle("RMSE of impact_speed0_KLdiv for different sampling methods")
 
 g2 <- ggplot(aver_sum1, aes(x = neff0,y=absolute_impact_speed_reduction_sqerr,
                             colour = group, linetype = reduce_simulations_by_logic,
@@ -254,24 +254,24 @@ fcount <- fcount + 1
 ###############
 fcount <- fcount + 1
 ##############
-g1 <- ggplot(optimised_group1, aes(x = neff0,y=mean_impact_speed0_sqerr,
-                            colour = group
-                            )) +
+g1 <- ggplot(optimised_group1, aes(x = neff0,y=impact_speed0_KLdiv_sqerr,
+                                   colour = group
+)) +
   #geom_point(size = 2) +
   geom_line(size = 1) +
   #xlim(100, 250) +
   #ylim(0,5) + 
-  labs(x = "Needed simulation number", y = "RMSE of Impact speed",
+  labs(x = "Needed simulation number", y = "RMSE of impact_speed0_KLdiv",
        colour = NULL, linetype = NULL)+
   theme(axis.title.x = element_text(vjust = 0, size = 15),
         axis.title.y = element_text(vjust = 2, size = 15),
         axis.text = element_text(size = 12),
         legend.position="top")+
-  ggtitle("RMSE of Impact speed for different sampling methods")
+  ggtitle("RMSE of impact_speed0_KLdiv for different sampling methods")
 
 g2 <- ggplot(optimised_group1, aes(x = neff0,y=absolute_impact_speed_reduction_sqerr,
-                            colour = group, linetype = reduce_simulations_by_logic,
-                            group = interaction(group, reduce_simulations_by_logic))) +
+                                   colour = group, linetype = reduce_simulations_by_logic,
+                                   group = interaction(group, reduce_simulations_by_logic))) +
   #geom_point(size = 2) +
   geom_line(size = 1) +
   # xlim(100, 250) +
@@ -285,8 +285,8 @@ g2 <- ggplot(optimised_group1, aes(x = neff0,y=absolute_impact_speed_reduction_s
   ggtitle("RMSE of Impact speed reduction for different sampling methods")
 
 g3 <- ggplot(optimised_group1, aes(x = neff0,y = proportion_crashes_avoided_sqerr,
-                            colour = group, linetype = reduce_simulations_by_logic,
-                            group = interaction(group, reduce_simulations_by_logic))) +
+                                   colour = group, linetype = reduce_simulations_by_logic,
+                                   group = interaction(group, reduce_simulations_by_logic))) +
   #geom_point(size = 2) +
   geom_line(size = 1) +
   # xlim(100, 250) +
@@ -300,8 +300,8 @@ g3 <- ggplot(optimised_group1, aes(x = neff0,y = proportion_crashes_avoided_sqer
   ggtitle("RMSE of mean crash avoidance rate for different sampling methods")
 
 g4 <- ggplot(optimised_group1, aes(x = neff0,y = absolute_injury_risk_reduction_sqerr,
-                            colour = group, linetype = reduce_simulations_by_logic,
-                            group = interaction(group, reduce_simulations_by_logic))) +
+                                   colour = group, linetype = reduce_simulations_by_logic,
+                                   group = interaction(group, reduce_simulations_by_logic))) +
   #geom_point(size = 2) +
   geom_line(size = 1) +
   # xlim(100, 250) +
