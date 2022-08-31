@@ -1,18 +1,17 @@
 # Calculate sampling scheme.
 calculate_sampling_scheme <- function(unlabelled,
                                       labelled,
-                                      sampling_method = c("uniform", 
+                                      sampling_method = c("SRS", 
                                                           "importance sampling", 
                                                           "optimised"), 
                                       proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
-                                                        "propto eoff_acc_prob", 
-                                                        "propto eoff_acc_prob * eoff * abs(acc) * maximpact0"), 
+                                                        "pps, size = prior weight", 
+                                                        "pps, size = prior weight * severity"), 
                                       target = c("NA", # Only used when sampling_method = "optimised", "NA" otherwise.
                                                  "baseline impact speed distribution", 
                                                  "impact speed reduction", 
                                                  "crash avoidance",
-                                                 "injury risk reduction",
-                                                 "injury risk reduction, stratified"),
+                                                 "injury risk reduction"),
                                       num_cases = 1, 
                                       sigma = 0) {
   
@@ -58,25 +57,24 @@ calculate_sampling_scheme <- function(unlabelled,
     unlabelled %<>% 
       left_join(maximpact0, by = "caseID")
   }
+
   
-  # Set to one, i.e., assume all simulations will produce a crash under baseline scenario.
-  collision_prob0_pred <- 1
-  
-  
-  # Calculate 'size'.
-  if ( sampling_method == "uniform" ) {
+  # Calculate 'size' of pps (probability proportional to size) sampling.
+  if ( sampling_method == "SRS" ) {
     
     size <- rep(1, nrow(unlabelled))
     
   } else if ( sampling_method == "importance sampling" ) {
     
-    if ( proposal_dist == "propto eoff_acc_prob" ) {
+    if ( proposal_dist == "pps, size = prior weight" ) {
       
       size <- with(unlabelled, eoff_acc_prob)
       
-    } else if ( proposal_dist == "propto eoff_acc_prob * eoff * abs(acc) * maximpact0" ) {
+    } else if ( proposal_dist == "pps, size = prior weight * severity" ) {
       
-      size <- with(unlabelled, eoff_acc_prob * (eoff + 0.1) * abs(acc) * maximpact0)
+      # Severity is assumed to increase with increase in EOFF, deceleration and 
+      # maximal impact speed under baseline scenario. 
+      size <- with(unlabelled, eoff_acc_prob * (eoff + 0.1) * (acc - min(acc) + 0.1) * maximpact0)
       
     } 
     
@@ -89,9 +87,12 @@ calculate_sampling_scheme <- function(unlabelled,
     } else if ( target == "baseline impact speed distribution" ) {
       
       est <- estimate_targets(labelled, weightvar = "final_weight")
-      if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { # Ad-hoc correction for zero SD in small samples.
+      
+      # Ad-hoc correction for zero SD in small samples.
+      if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { 
         est["impact_speed0_logSD"] <- Inf
       }
+      
       Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
                   est["impact_speed0_logSD"])
       r <- sigma / est["impact_speed0_logSD"]
@@ -108,35 +109,17 @@ calculate_sampling_scheme <- function(unlabelled,
       
       size <- with(unlabelled, sqrt((injury_risk0_pred - injury_risk1_pred)^2 + sigma^2))
       
-    } else if ( target == "injury risk reduction, stratified" ) {
-      
-      nStrata <- 10
-      sizeMat <- matrix(0, nrow = nrow(unlabelled), ncol = nStrata)
-      for ( i in 1:nStrata ) {
-        sizeMat[, i] <- with(unlabelled, ifelse(impact_speed0_pred > 10 * (i - 1) & impact_speed0_pred <= 10 * i, sqrt(collision_prob0_pred) * eoff_acc_prob * sqrt((injury_risk0_pred - injury_risk1_pred)^2 + sigma^2), rep(0, length(injury_risk0_pred))))
-      }
-      
-      # Pooled 'size' is root sum of squares of standardised individual 'sizes'.
-      # Without standardisation: produces same result as non-stratified version.
-      size2 <- sizeMat^2
-      csum <- colSums(size2)
-      ix <- which(csum > 0)
-      size <- sqrt(rowSums(scale(size2[, ix], center = FALSE, scale = csum[ix]))) 
-      
-      # To account for probability of (deceleration, glance) pair and probability of crash in baseline scenario. 
-      # Note: use division here since we multiple both on row 98 and 118.
-      size <- with(unlabelled, (sqrt(collision_prob0_pred) * eoff_acc_prob)^(-1) * size)
-      size[is.na(size)] <- 0
-      
     } 
     
-    if ( all(is.na(size)) || !any(size > 0) ) { # If no positive 'sizes' found -> set all equal. Becomes same as importance sampling with probability proportional to eoff acc probability.
+    # If no positive 'sizes' found -> set all equal. 
+    # Becomes same as importance sampling with probability proportional to EOFF-ACC probability.
+    if ( all(is.na(size)) || !any(size > 0) ) { 
       size[1:length(size)] <- 1
     }
     size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
     
-    # Account for probability of (deceleration, glance) pair and probability of crash in baseline scenario.
-    size <- with(unlabelled, sqrt(collision_prob0_pred) * eoff_acc_prob * size)
+    # Multiply by probability of deceleration-glance pair.
+    size <- with(unlabelled, eoff_acc_prob * size)
     
   } 
   
