@@ -28,8 +28,8 @@ calculate_sampling_scheme <- function(unlabelled,
   
   # target should be "NA" when sampling_method not equal to "optimised".
   if ( sampling_method != "optimised" & target != "NA") { 
-    stop(sprintf("Error in calculate_sampling_scheme. sampling_method = %s and proposal_dist = %s not allowed.", 
-                 sampling_method, proposal_dist))
+    stop(sprintf("Error in calculate_sampling_scheme. sampling_method = %s and target = %s not allowed.", 
+                 sampling_method, target))
   } 
   
   # proposal_dist must be specified if sampling_method = "importance sampling".
@@ -42,13 +42,13 @@ calculate_sampling_scheme <- function(unlabelled,
     stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = NA not allowed.")
   }
   
-  # num_cases should be integer between 1 and number of cases in unlabelled data set.
+  # num_cases should be integer between 1 and number of cases in unlabelled dataset.
   num_cases <- round(num_cases)
   if ( num_cases < 1 ) {
     stop("Error in calculate_sampling_scheme. num_cases must be greater than or equal to 1.")
   }
   if ( num_cases > length(unique(unlabelled$caseID)) ) {
-    stop(sprintf("Error in calculate_sampling_scheme. num_cases must be smaller than or equal to %d (number of cases in input dataset).", 
+    stop(sprintf("Error in calculate_sampling_scheme. num_cases must be smaller than or equal to %d (number of cases in unlabelled dataset).", 
                  length(unique(unlabelled$caseID))))
   }
   

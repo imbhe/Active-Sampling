@@ -79,8 +79,8 @@ active_learning <- function(data,
   
   # target should be "NA" when sampling_method not equal to "optimised".
   if ( sampling_method != "optimised" & target != "NA") { 
-    stop(sprintf("Error in active_learning. sampling_method = %s and proposal_dist = %s not allowed.", 
-                 sampling_method, proposal_dist))
+    stop(sprintf("Error in active_learning. sampling_method = %s and target = %s not allowed.", 
+                 sampling_method, target))
   } 
   
   # proposal_dist must be specified if sampling_method = "importance sampling".
@@ -93,7 +93,7 @@ active_learning <- function(data,
     stop("Error in active_learning. sampling_method = optimised and target = NA not allowed.")
   }
   
-  # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
+  # num_cases_per_iteration should be integer between 1 and number of cases in input dataset.
   num_cases_per_iteration <- round(num_cases_per_iteration)
   if ( num_cases_per_iteration < 1 ) {
     stop("Error in active_learning. num_cases_per_iteration must be greater than or equal to 1.")
@@ -208,7 +208,7 @@ active_learning <- function(data,
       # Calculated predictions.
       pred <- update_predictions(labelled, unlabelled, plot = plot) 
       
-      # Add to unlabelled data set.
+      # Add to unlabelled dataset.
       unlabelled %<>% 
         mutate(collision_prob0_pred = pred$collision_prob0,
                collision_prob1_pred = pred$collision_prob1,
