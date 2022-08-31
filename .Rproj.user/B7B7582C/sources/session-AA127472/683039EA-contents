@@ -63,17 +63,10 @@ active_learning <- function(data,
                             verbose = FALSE, # TRUE or FALSE.
                             plot = FALSE) { # TRUE or FALSE.
   
-  # Make sure packages are loaded.
-  require("boot")
-  require("caret")
-  require("glmnet")
-  require("magrittr")
-  require("ranger")
-  require("sampling")
-  require("tidyverse")
+  nburnin <- 0 # Not used so set to zero.
+
   
-  
-  # Check input parameters.
+  # Check input parameters. ----
   sampling_method <- match.arg(sampling_method)
   proposal_dist <- match.arg(proposal_dist)
   target <- match.arg(target)
@@ -84,54 +77,44 @@ active_learning <- function(data,
                  sampling_method, proposal_dist))
   } 
   
-  # proposal_dist must be specified if sampling_method = "importance sampling".
-  if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
-    stop("Error in active_learning. sampling_method = importance sampling and proposal_dist = none not allowed.")
-  }
-  
-  # Target should be "NA" when sampling_method not equal to "optimised".
-  if ( sampling_method != "optimised" ) { 
-    target <- "NA" 
-    nburnin <- 0
+  # target should be "NA" when sampling_method not equal to "optimised".
+  if ( sampling_method != "optimised" & target != "NA") { 
+    stop(sprintf("Error in active_learning. sampling_method = %s and proposal_dist = %s not allowed.", 
+                 sampling_method, proposal_dist))
   } 
   
+  # proposal_dist must be specified if sampling_method = "importance sampling".
+  if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
+    stop("Error in active_learning. sampling_method = importance sampling and proposal_dist = NA not allowed.")
+  }
+
   # target must be specified if sampling_method = "optimised".
   if ( sampling_method == "optimised" & target == "NA" ) {
-    stop("Error in active_learning. sampling_method = optimised and target = none not allowed.")
+    stop("Error in active_learning. sampling_method = optimised and target = NA not allowed.")
   }
   
   # num_cases_per_iteration should be integer between 1 and number of cases in input data set.
   num_cases_per_iteration <- round(num_cases_per_iteration)
-  num_cases_per_iteration <- max(c(num_cases_per_iteration, 1))
-  num_cases_per_iteration <- min(c(num_cases_per_iteration, length(unique(data$caseID))))
-  
-  # nburnin should be positive integer.
-  nburnin <- max(floor(nburnin), 0)
-  
-  # Number of cases in input dataset.
-  n_cases <- length(unique(df$caseID))
-  
-  # Cumulative effective number of baselie scenario simulations per iteration. 
-  n_seq <- cumsum(c(rep(n_cases, nburnin), rep(num_cases_per_iteration, niter - nburnin)))
-  
-  if ( sampling_method == "optimised" ) {
-    
-    # Prediction models will be updated every when n_update observations have been collected.
-    # Find corresponding iteration indices model_update_iterations.
-    n_update <- c(seq(10, 100, 10), seq(150, 500, 50), seq(600, 1000, 100), seq(1500, 5000, 500), seq(6000, 10000, 1000))
-    model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
-    model_update_iterations <- as.numeric(na.omit(model_update_iterations))
-    model_update_iterations <- unique(model_update_iterations[model_update_iterations > max(1, nburnin)])
-
-    if ( verbose ) {
-      print(sprintf("Predictions updated at iterations %s", paste(model_update_iterations, collapse = ", ")))
-      print(sprintf("after %s observations", paste(n_seq[model_update_iterations - 1], collapse = ", ")))
-    }
-    
+  if ( num_cases_per_iteration < 1 ) {
+    stop("Error in active_learning. num_cases_per_iteration must be greater than or equal to 1.")
+  }
+  if ( num_cases_per_iteration > length(unique(df$caseID)) ) {
+    stop(sprintf("Error in active_learning. num_cases_per_iteration must be smaller than or equal to %d (number of cases in input dataset).", 
+                 length(unique(df$caseID))))
   }
 
   
-  # Load helper functions.
+  # Make sure packages are loaded. ----
+  require("boot")
+  require("caret")
+  require("glmnet")
+  require("magrittr")
+  require("ranger")
+  require("sampling")
+  require("tidyverse")
+  
+  
+  # Load helper functions. ----
   source("Rscript/calculate_sampling_scheme.R")
   source("Rscript/estimate_targets.R")
   source("Rscript/find_crashes.R")
@@ -145,22 +128,39 @@ active_learning <- function(data,
   source("Rscript/update_predictions.R")
   
   
-  # To store results.
-  res <- NULL
+  # Set some parameters. ----
   
-  # Calculate target quantities on full data.
-  ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob")
+  res <- NULL # To store results.
+  n_cases <- length(unique(df$caseID)) # Number of cases in input dataset.
+  ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
+  n_seq <- cumsum(c(rep(n_cases, nburnin), rep(num_cases_per_iteration, niter - nburnin)))   # Cumulative number of baseline scenario simulations per iteration. 
+
+  # For optimsed sampling:
+  # Prediction models will be updated every when n_update observations have been collected.
+  # Find corresponding iteration indices model_update_iterations.
+  if ( sampling_method == "optimised" ) {
+
+    n_update <- c(seq(10, 100, 10), seq(150, 500, 50), seq(600, 1000, 100), seq(1500, 5000, 500), seq(6000, 10000, 1000))
+    model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
+    model_update_iterations <- as.numeric(na.omit(model_update_iterations))
+    model_update_iterations <- unique(model_update_iterations[model_update_iterations > max(1, nburnin)])
+
+    if ( verbose ) {
+      print(sprintf("Predictions updated at iterations %s", paste(model_update_iterations, collapse = ", ")))
+      print(sprintf("after %s observations", paste(n_seq[model_update_iterations - 1], collapse = ", ")))
+    }
+    
+  }
   
  
-  # Initialise on grid.
+  # Initialise labelled and unlabelled datasets. ----
   grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) 
   init <- initialise_grid(data, grid, reduce_simulations_by_logic)
-  
   labelled <- init$labelled 
   unlabelled <- init$unlabelled 
 
   
-  # Iterate
+  # Iterate. ----
   new_sample <- labelled 
   for ( i in 1:niter ) {
     
@@ -243,17 +243,12 @@ active_learning <- function(data,
         ix[jx] <- 1
         
       } else if ( sampling_method == "importance sampling" ) { # Importance sampling.
-        
-        ix <- safe_UPmaxentropy(prob$sampling_probability)
-        
-        # If UPmaxentropy (sampling without replacement) did not work: 
-        # use multinomial sampling instead (sampling with replacement).
-        if ( is.null(ix) ) { 
-          
-          ix <- as.numeric(rmultinom(n = 1, size = num_cases_per_iteration * i, 
-                                     prob = prob$sampling_probability))
-          
-        }
+
+        # Use Multinomial sampling with replacement since sampling without replacement 
+        # (conditional Poisson sampling using sampling::UPmaxentropy) takes too 
+        # much time when number of samples get large. 
+        ix <- as.numeric(rmultinom(n = 1, size = num_cases_per_iteration * i, 
+                                   prob = prob$sampling_probability))
         
       }
       
@@ -283,7 +278,7 @@ active_learning <- function(data,
           sigma <- pred$rmse["log_impact_speed0"]
         } else if ( target == "impact speed reduction" ) {
           sigma <- pred$rmse["impact_speed_reduction"]
-        } else if ( target %in% c("injury risk reduction", "injury risk reduction, stratified") ) {
+        } else if ( target == "injury risk reduction" ) {
           sigma <- pred$rmse["injury_risk_reduction"]
         } else if ( target == "crash avoidance" ) {
           sigma <- 0

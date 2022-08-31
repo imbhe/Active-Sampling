@@ -15,14 +15,21 @@ calculate_sampling_scheme <- function(unlabelled,
                                       num_cases = 1, 
                                       sigma = 0) {
   
-  # Check input parameters.
+  # Check input parameters. ----
   sampling_method <- match.arg(sampling_method)
   proposal_dist <- match.arg(proposal_dist)
   target <- match.arg(target)
   
   # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
-  if ( sampling_method != "importance sampling" ) { 
-    proposal_dist <- "NA"
+  if ( sampling_method != "importance sampling" & proposal_dist != "NA") { 
+    stop(sprintf("Error in calculate_sampling_scheme. sampling_method = %s and proposal_dist = %s not allowed.", 
+                 sampling_method, proposal_dist))
+  } 
+  
+  # target should be "NA" when sampling_method not equal to "optimised".
+  if ( sampling_method != "optimised" & target != "NA") { 
+    stop(sprintf("Error in calculate_sampling_scheme. sampling_method = %s and proposal_dist = %s not allowed.", 
+                 sampling_method, proposal_dist))
   } 
   
   # proposal_dist must be specified if sampling_method = "importance sampling".
@@ -30,23 +37,23 @@ calculate_sampling_scheme <- function(unlabelled,
     stop("Error in calculate_sampling_scheme. sampling_method = importance sampling and proposal_dist = NA not allowed.")
   }
   
-  # target should be "NA" when sampling_method not equal to "optimised".
-  if ( sampling_method != "optimised" ) { 
-    target <- "NA" 
-  } 
-  
   # target must be specified if sampling_method = "optimised".
   if ( sampling_method == "optimised" & target == "NA" ) {
     stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = NA not allowed.")
   }
   
-  # num_cases should be integer between 1 and number of cases in input unlabelled set.
+  # num_cases should be integer between 1 and number of cases in unlabelled data set.
   num_cases <- round(num_cases)
-  num_cases <- max(c(num_cases, 1))
-  num_cases <- min(c(num_cases, length(unique(unlabelled$caseID))))
+  if ( num_cases < 1 ) {
+    stop("Error in calculate_sampling_scheme. num_cases must be greater than or equal to 1.")
+  }
+  if ( num_cases > length(unique(unlabelled$caseID)) ) {
+    stop(sprintf("Error in calculate_sampling_scheme. num_cases must be smaller than or equal to %d (number of cases in input dataset).", 
+                 length(unique(unlabelled$caseID))))
+  }
   
   
-  # Calculate maximal impact speed per case.
+  # Calculate maximal impact speed per case. ----
   if ( nrow(labelled) > 0) {
     maximpact0 <- labelled %>% 
       group_by(caseID) %>% 
@@ -59,7 +66,7 @@ calculate_sampling_scheme <- function(unlabelled,
   }
 
   
-  # Calculate 'size' of pps (probability proportional to size) sampling.
+  # Calculate 'size' of pps (probability proportional to size) sampling. ----
   if ( sampling_method == "SRS" ) {
     
     size <- rep(1, nrow(unlabelled))
@@ -127,7 +134,7 @@ calculate_sampling_scheme <- function(unlabelled,
   sampling_probability <- num_cases * size / sum(size)
   
   
-  # Adjustment to account for sampling of multiple cases per iteration.
+  # Adjustment to account for sampling of multiple cases per iteration. ----
   case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)
   
   cases <- unique(unlabelled$caseID)
