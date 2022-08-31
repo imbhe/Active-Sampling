@@ -12,7 +12,7 @@ calculate_sampling_scheme <- function(unlabelled,
                                                  "impact speed reduction", 
                                                  "crash avoidance",
                                                  "injury risk reduction"),
-                                      num_cases = 1, 
+                                      n_cases = 1, 
                                       sigma = 0) {
   
   # Check input parameters. ----
@@ -42,13 +42,13 @@ calculate_sampling_scheme <- function(unlabelled,
     stop("Error in calculate_sampling_scheme. sampling_method = optimised and target = NA not allowed.")
   }
   
-  # num_cases should be integer between 1 and number of cases in unlabelled dataset.
-  num_cases <- round(num_cases)
-  if ( num_cases < 1 ) {
-    stop("Error in calculate_sampling_scheme. num_cases must be greater than or equal to 1.")
+  # n_cases should be integer between 1 and number of cases in unlabelled dataset.
+  n_cases <- round(n_cases)
+  if ( n_cases < 1 ) {
+    stop("Error in calculate_sampling_scheme. n_cases must be greater than or equal to 1.")
   }
-  if ( num_cases > length(unique(unlabelled$caseID)) ) {
-    stop(sprintf("Error in calculate_sampling_scheme. num_cases must be smaller than or equal to %d (number of cases in unlabelled dataset).", 
+  if ( n_cases > length(unique(unlabelled$caseID)) ) {
+    stop(sprintf("Error in calculate_sampling_scheme. n_cases must be smaller than or equal to %d (number of cases in unlabelled dataset).", 
                  length(unique(unlabelled$caseID))))
   }
   
@@ -131,7 +131,7 @@ calculate_sampling_scheme <- function(unlabelled,
   } 
   
   # Probability proportional to size.
-  sampling_probability <- num_cases * size / sum(size)
+  sampling_probability <- n_cases * size / sum(size)
   
   
   # Adjustment to account for sampling of multiple cases per iteration. ----
@@ -152,7 +152,7 @@ calculate_sampling_scheme <- function(unlabelled,
     }
     
     jx <- which( !(unlabelled$caseID %in% certainty_selection_cases) )
-    sampling_probability[jx] <- (num_cases - length(certainty_selection_cases)) * size[jx] / sum(size[jx]) 
+    sampling_probability[jx] <- (n_cases - length(certainty_selection_cases)) * size[jx] / sum(size[jx]) 
     
     case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)
     

@@ -8,12 +8,11 @@ for (i in 1:1) {
   tic()
   print(sprintf("%d", i))
   res <- active_learning(df, 
-                         sampling_method = "optimised", 
-                         proposal_dist = "NA",
-                         target = "impact speed reduction", 
-                         reduce_simulations_by_logic = TRUE,
-                         num_cases_per_iteration = 10, 
-                         nburnin = 2, 
+                         sampling_method = "importance sampling", 
+                         proposal_dist = "pps, size = prior weight",
+                         target = "NA", 
+                         use_logic = TRUE,
+                         n_cases_per_iter = 10, 
                          niter = 15, 
                          verbose = TRUE, 
                          plot = FALSE, 

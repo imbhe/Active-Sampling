@@ -18,11 +18,11 @@
 #
 # target: target of optimisation, only used when sampling_method = "optimised".
 #
-# reduce_simulations_by_logic: Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
+# use_logic: Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
 #                              (no crash or maximal impact speed collision) and
 #                              avoid sampling in those regions.
 #
-# num_cases_per_iteration: number of cases to sample from per iteration. 
+# n_cases_per_iter: number of cases to sample from per iteration. 
 #
 # niter: number of iterations.
 #
@@ -55,8 +55,8 @@ active_learning <- function(data,
                                        "impact speed reduction", 
                                        "crash avoidance",
                                        "injury risk reduction"),
-                            reduce_simulations_by_logic = TRUE, # TRUE or FALSE. 
-                            num_cases_per_iteration = 1,
+                            use_logic = TRUE, # TRUE or FALSE. 
+                            n_cases_per_iter = 1,
                             niter = 500, 
                             nboot = 100, 
                             verbose = FALSE, # TRUE or FALSE.
@@ -90,13 +90,13 @@ active_learning <- function(data,
     stop("Error in active_learning. sampling_method = optimised and target = NA not allowed.")
   }
   
-  # num_cases_per_iteration should be integer between 1 and number of cases in input dataset.
-  num_cases_per_iteration <- round(num_cases_per_iteration)
-  if ( num_cases_per_iteration < 1 ) {
-    stop("Error in active_learning. num_cases_per_iteration must be greater than or equal to 1.")
+  # n_cases_per_iter should be integer between 1 and number of cases in input dataset.
+  n_cases_per_iter <- round(n_cases_per_iter)
+  if ( n_cases_per_iter < 1 ) {
+    stop("Error in active_learning. n_cases_per_iter must be greater than or equal to 1.")
   }
-  if ( num_cases_per_iteration > length(unique(df$caseID)) ) {
-    stop(sprintf("Error in active_learning. num_cases_per_iteration must be smaller than or equal to %d (number of cases in input dataset).", 
+  if ( n_cases_per_iter > length(unique(df$caseID)) ) {
+    stop(sprintf("Error in active_learning. n_cases_per_iter must be smaller than or equal to %d (number of cases in input dataset).", 
                  length(unique(df$caseID))))
   }
 
@@ -130,7 +130,7 @@ active_learning <- function(data,
   res <- NULL # To store results.
   n_cases <- length(unique(df$caseID)) # Number of cases in input dataset.
   ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
-  n_seq <- cumsum(rep(num_cases_per_iteration, niter)) # Cumulative number of baseline scenario simulations. 
+  n_seq <- cumsum(rep(n_cases_per_iter, niter)) # Cumulative number of baseline scenario simulations. 
 
   # For optimised sampling:
   # Prediction models will be updated every when n_update observations have been collected.
@@ -152,7 +152,7 @@ active_learning <- function(data,
  
   # Initialise labelled and unlabelled datasets. ----
   grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) 
-  init <- initialise_grid(data, grid, reduce_simulations_by_logic)
+  init <- initialise_grid(data, grid, use_logic)
   labelled <- init$labelled 
   unlabelled <- init$unlabelled 
 
@@ -165,8 +165,8 @@ active_learning <- function(data,
     if ( verbose ) { print(sprintf("Iteration %d", i)) }
     
     
-    # If reduce_simulations_by_logic = TRUE:
-    if ( reduce_simulations_by_logic & nrow(new_sample) > 0 ) {
+    # If use_logic = TRUE:
+    if ( use_logic & nrow(new_sample) > 0 ) {
       
       # Find all known non-crashes in unlabelled dataset.
       ix <- find_non_crashes(new_sample, unlabelled)
@@ -194,7 +194,7 @@ active_learning <- function(data,
                sim_count0 = ifelse(row_number() %in% ix$max_impact_crashes0, 0, sim_count0),
                sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
       
-    } # End reduce_simulations_by_logic.
+    } # End use_logic.
     
     
     # Update predictions.
@@ -221,17 +221,17 @@ active_learning <- function(data,
     
     # Calculate sampling probabilities. 
     if ( sampling_method %in% c("SRS", "importance sampling") && 
-         reduce_simulations_by_logic == FALSE ) { # Simple random sampling or ordinary importance sampling.
+         use_logic == FALSE ) { # Simple random sampling or ordinary importance sampling.
       
       prob <- calculate_sampling_scheme(unlabelled, 
                                         labelled, 
                                         sampling_method = sampling_method, 
                                         proposal_dist = proposal_dist, 
-                                        num_cases = 1)
+                                        n_cases = 1)
       
       prob$case_probability <- NULL
       prob$sampling_probability <- sampling::inclusionprobabilities(prob$sampling_probability, 
-                                                                    num_cases_per_iteration * i)
+                                                                    n_cases_per_iter * i)
    
       if ( sampling_method == "SRS" ) { # Simple random sampling.
         
@@ -241,10 +241,11 @@ active_learning <- function(data,
         
       } else if ( sampling_method == "importance sampling" ) { # Importance sampling.
 
-        # Use Multinomial sampling with replacement since sampling without replacement 
-        # (conditional Poisson sampling using sampling::UPmaxentropy) takes too 
-        # much time when number of samples get large. 
-        ix <- as.numeric(rmultinom(n = 1, size = num_cases_per_iteration * i, 
+        # Use Multinomial sampling with replacement. 
+        # Sampling without replacement (conditional Poisson sampling using 
+        # sampling::UPmaxentropy) takes too much time when number of samples get large. 
+        ix <- as.numeric(rmultinom(n = 1, 
+                                   size = n_cases_per_iter * i, 
                                    prob = prob$sampling_probability))
         
       }
@@ -264,7 +265,7 @@ active_learning <- function(data,
                                           sampling_method = "importance sampling", 
                                           proposal_dist = "pps, size = prior weight", 
                                           target = "NA", 
-                                          num_cases = num_cases_per_iteration)
+                                          n_cases = n_cases_per_iter)
         
         
       } else {
@@ -290,7 +291,7 @@ active_learning <- function(data,
                                           sampling_method, 
                                           proposal_dist, 
                                           target, 
-                                          num_cases_per_iteration,
+                                          n_cases_per_iter,
                                           sigma)
         
       } 
@@ -373,8 +374,8 @@ active_learning <- function(data,
     newres <- tibble(sampling_method = sampling_method,
                      proposal_dist = proposal_dist,
                      target = target,
-                     reduce_simulations_by_logic = reduce_simulations_by_logic,
-                     num_cases_per_iteration = num_cases_per_iteration) %>% # Meta-information.
+                     use_logic = use_logic,
+                     n_cases_per_iter = n_cases_per_iter) %>% # Meta-information.
       add_column(iter = i, 
                  neff0 = effective_number_simulations0, 
                  neff1 = effective_number_simulations1, 
