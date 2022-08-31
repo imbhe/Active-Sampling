@@ -58,12 +58,9 @@ active_learning <- function(data,
                             reduce_simulations_by_logic = TRUE, # TRUE or FALSE. 
                             num_cases_per_iteration = 1,
                             niter = 500, 
-                            nburnin = 0, # Only used with sampling_method = "optimised".
                             nboot = 100, 
                             verbose = FALSE, # TRUE or FALSE.
                             plot = FALSE) { # TRUE or FALSE.
-  
-  nburnin <- 0 # Not used so set to zero.
 
   
   # Check input parameters. ----
@@ -133,9 +130,9 @@ active_learning <- function(data,
   res <- NULL # To store results.
   n_cases <- length(unique(df$caseID)) # Number of cases in input dataset.
   ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
-  n_seq <- cumsum(c(rep(n_cases, nburnin), rep(num_cases_per_iteration, niter - nburnin)))   # Cumulative number of baseline scenario simulations per iteration. 
+  n_seq <- cumsum(rep(num_cases_per_iteration, niter)) # Cumulative number of baseline scenario simulations. 
 
-  # For optimsed sampling:
+  # For optimised sampling:
   # Prediction models will be updated every when n_update observations have been collected.
   # Find corresponding iteration indices model_update_iterations.
   if ( sampling_method == "optimised" ) {
@@ -143,7 +140,7 @@ active_learning <- function(data,
     n_update <- c(seq(10, 100, 10), seq(150, 500, 50), seq(600, 1000, 100), seq(1500, 5000, 500), seq(6000, 10000, 1000))
     model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     model_update_iterations <- as.numeric(na.omit(model_update_iterations))
-    model_update_iterations <- unique(model_update_iterations[model_update_iterations > max(1, nburnin)])
+    model_update_iterations <- unique(model_update_iterations[model_update_iterations > 1])
 
     if ( verbose ) {
       print(sprintf("Predictions updated at iterations %s", paste(model_update_iterations, collapse = ", ")))
@@ -259,14 +256,15 @@ active_learning <- function(data,
       
     } else { # Optimised sampling, or simple random sampling/importance sampling with logic.
       
-      # Run nburnin iterations with case-stratified importance sampling before optimisation starts.
-      if ( sampling_method == "optimised" && (i <= nburnin | !exists("pred")) ) {
+      # Before active learning can start: use importance sampling.
+      if ( sampling_method == "optimised" && !exists("pred") ) {
         
-        prob <- calculate_sampling_scheme(unlabelled, labelled, 
+        prob <- calculate_sampling_scheme(unlabelled, 
+                                          labelled, 
                                           sampling_method = "importance sampling", 
                                           proposal_dist = "pps, size = prior weight", 
                                           target = "NA", 
-                                          num_cases = ifelse(i <= nburnin, n_cases, 1))
+                                          num_cases = num_cases_per_iteration)
         
         
       } else {
