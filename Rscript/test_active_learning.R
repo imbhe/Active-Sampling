@@ -12,10 +12,10 @@ for (i in 1:1) {
                          proposal_dist = "pps, size = prior weight",
                          target = "NA", 
                          use_logic = TRUE,
-                         n_cases_per_iter = 10, 
-                         niter = 15, 
+                         n_cases_per_iter = 5, 
+                         niter = 31, 
                          verbose = TRUE, 
                          plot = FALSE, 
-                         nboot = 0)
+                         nboot = 100)
   toc()
 }

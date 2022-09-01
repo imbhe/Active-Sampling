@@ -1,0 +1,5 @@
+# Give the input file name to the function.
+result <- fromJSON(file = "C:/Users/imbergh/Downloads/CARPL test download 2/21ac84ae29c811ed9eac0242ac17000e_rois.json")
+
+# Print the result.
+print(result)

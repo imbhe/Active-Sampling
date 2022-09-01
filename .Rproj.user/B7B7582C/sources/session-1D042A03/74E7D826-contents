@@ -149,6 +149,21 @@ active_learning <- function(data,
     
   }
   
+  
+  # If bootstrap is used.
+  if ( nboot > 0 ) {
+    
+    n_update <- seq(10, niter * n_cases_per_iter, 10)
+    boot_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
+    boot_update_iterations <- unique(as.numeric(na.omit(boot_update_iterations)))
+    
+    if ( verbose ) {
+      print(sprintf("Bootstrap standard error updated at iterations %s", paste(boot_update_iterations, collapse = ", ")))
+      print(sprintf("after %s observations", paste(n_seq[boot_update_iterations], collapse = ", ")))
+    }
+    
+  }
+  
  
   # Initialise labelled and unlabelled datasets. ----
   grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) 
@@ -358,12 +373,19 @@ active_learning <- function(data,
     actual_number_simulations1 <- sum(labelled$sim_count1)
     
     if ( nrow(crashes) > 0 ) { # If any crashes have been generated.
-      boot <- boot(crashes, statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), R = nboot)
+      
+      boot <- boot(crashes, 
+                   statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
+                   R = ifelse(i %in% boot_update_iterations, nboot, 0) ) # Run bootstrap every 10th sample.
+      
       est <- boot$t0 # Estimates.
       se <- apply(boot$t, 2 , sd) # Standard error of estimates.
+      
     } else {
+      
       est <- estimate_targets(crashes) # Returns NaN if crashes is empty set.
       se <- rep(NA, length(est))
+      
     }
     sqerr <- (est - ground_truth)^2 # Squared error with respect to ground truth.
     names(se) <- paste0(names(est), "_se")
