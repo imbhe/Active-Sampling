@@ -1,3 +1,119 @@
+
+# Prepare data for model fitting with LASSO.
+form <- ~ -1 + scenario + eoff + log(0.1 + eoff) + acc + log(-acc) + 
+  caseID*scenario*eoff*acc + caseID*scenario*log(0.1 + eoff)*log(-acc)
+X <- model.matrix(form, data = labelled)
+newX <- model.matrix(form, data = unlabelled)
+ntrain <- nrow(X)
+ix <- sample(1:ntrain) # Scramble training data.
+y <- labelled$impact_speed[ix]
+X <- X[ix, ]
+
+
+# LASSO regression.
+ix <- which(y > 0 & y < ymax)
+nfolds <- ifelse(length(ix) < 10, length(ix), 5)
+
+options(warn = -1)
+lasso <- safe_cv_glmnet(X[ix, ], log(y[ix]), 
+                        grouped = FALSE, nfolds = nfolds, 
+                        nlambda = 50, maxit = 1e3,
+                        penalty.factor = c(0, rep(1, ncol(X) - 1))) # No penalty on main effect of counter-measure.
+options(warn = defaultW)
+
+if ( !is.null(lasso) ) { # If able to fit model: calculate predictions.
+  
+  # Prediction on labelled data.
+  yhat2_train <- exp(as.numeric(predict(lasso, newx = X, s = "lambda.1se", type = "response")))
+  yhat2_train[yhat2_train <= 0] <- max(min(yhat2_train[yhat2_train > 0]), 0)
+  yhat2_train[yhat2_train > ymax] <- ymax
+  
+  # Prediction unlabelled data.
+  yhat2 <- exp(as.numeric(predict(lasso, newx = newX, s = "lambda.1se", type = "response")))
+  yhat2[yhat2 <= 0] <- max(min(yhat2[yhat2 > 0]), 0)
+  yhat2[yhat2 > ymax] <- ymax
+  
+} else { # If unable to fit model: use predictions from random forest. 
+  
+  yhat2_train <- yhat1_train
+  yhat2 <- yhat1
+  
+}
+
+
+
+# LASSO logistic regression with outcome-stratified cross-validation. 
+nstrata <- min(min(table(y > 0)), 5)
+events <- which(y > 0) 
+nonevents <- which(!(y > 0)) 
+foldid <- rep(0, length(y))
+foldid[events] <- rep(1:nstrata, length(events))[1:length(events)]
+foldid[nonevents] <- rep(1:nstrata, length(nonevents))[1:length(nonevents)]
+
+options(warn = -1)
+lasso <- safe_cv_glmnet(X, as.factor(y > 0), family = "binomial", 
+                        grouped = FALSE, foldid = foldid, 
+                        nlambda = 50, maxit = 1e3,
+                        penalty.factor = c(0, rep(1, ncol(X) - 1))) # No penalty on main effect of counter-measure.
+options(warn = defaultW)
+
+if ( !is.null(lasso) ) { # If able to fit model: calculate predictions. 
+  
+  # Prediction on labelled data.
+  ppos2_train <- as.numeric(predict(lasso, newx = X, s = "lambda.1se", type = "response"))
+  ppos2_train[ppos2_train <= 0] <- min(ppos2_train[ppos2_train > 0])
+  
+  # Prediction on unlabelled data.
+  ppos2 <- as.numeric(predict(lasso, newx = newX, s = "lambda.1se", type = "response"))
+  ppos2[ppos2 <= 0] <- min(ppos2[ppos2 > 0])
+  
+} else { # If unable to fit model: use predictions from random forest. 
+  
+  ppos2_train <- ppos1_train
+  ppos2 <- ppos1
+  
+} 
+
+
+
+# LASSO logistic regression with outcome-stratified cross-validation.
+nstrata <- min(min(table(y == ymax)), 5)
+events <- which(y == ymax) 
+nonevents <- which(!(y == ymax)) 
+foldid <- rep(0, length(y))
+foldid[events] <- rep(1:nstrata, length(events))[1:length(events)]
+foldid[nonevents] <- rep(1:nstrata, length(nonevents))[1:length(nonevents)]
+
+options(warn = -1)
+lasso <- safe_cv_glmnet(X, as.factor(y == ymax), family = "binomial", 
+                        grouped = FALSE, foldid = foldid, 
+                        nlambda = 50, maxit = 1e3,
+                        penalty.factor = c(0, rep(1, ncol(X) - 1))) # No penalty on main effect of counter-measure.
+options(warn = defaultW)
+
+if ( !is.null(lasso) ) { # If able to fit model: calculate predictions. 
+  
+  # Prediction on labelled data.
+  pmax2_train <- as.numeric(predict(lasso, newx = X, s = "lambda.1se", type = "response"))
+  pmax2_train[pmax2_train <= 0] <- min(pmax2_train[pmax2_train > 0])
+  
+  # Prediction on unlabelled data.
+  pmax2 <- as.numeric(predict(lasso, newx = newX, s = "lambda.1se", type = "response"))
+  pmax2[pmax2 <= 0] <- min(pmax2[pmax2 > 0])
+  
+} else { # If unable to fit model: use predictions from random forest. 
+  
+  pmax2 <- pmax1
+  pmax2_train <- pmax1_train
+  
+} 
+
+
+
+
+
+
+
 else if ( target == "injury risk reduction, stratified" ) {
   
   nStrata <- 10

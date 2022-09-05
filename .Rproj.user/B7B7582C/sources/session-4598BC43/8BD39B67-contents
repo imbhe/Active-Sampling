@@ -61,13 +61,17 @@ active_learning <- function(data,
                             nboot = 100, 
                             verbose = FALSE, # TRUE or FALSE.
                             plot = FALSE) { # TRUE or FALSE.
+  
+  data %<>% 
+    mutate(impact_speed_reduction = impact_speed0 - impact_speed1,
+           injury_risk_reduction = injury_risk0 - injury_risk1)
 
   
   # Check input parameters. ----
   sampling_method <- match.arg(sampling_method)
   proposal_dist <- match.arg(proposal_dist)
   target <- match.arg(target)
-  
+
   # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
   if ( sampling_method != "importance sampling" & proposal_dist != "NA") { 
     stop(sprintf("Error in active_learning. sampling_method = %s and proposal_dist = %s not allowed.", 
@@ -104,7 +108,6 @@ active_learning <- function(data,
   # Make sure packages are loaded. ----
   require("boot")
   require("caret")
-  require("glmnet")
   require("magrittr")
   require("ranger")
   require("sampling")
@@ -119,7 +122,6 @@ active_learning <- function(data,
   source("Rscript/find_non_crashes.R")
   source("Rscript/initialise_grid.R")
   source("Rscript/KL.R")
-  source("Rscript/safe_cv_glmnet.R")
   source("Rscript/safe_caret_train.R")
   source("Rscript/safe_UPmaxentropy.R")
   source("Rscript/update_predictions.R")
@@ -151,7 +153,7 @@ active_learning <- function(data,
   
   
   # If bootstrap is used.
-  if ( nboot > 0 ) {
+  if ( nboot > 0 & niter * n_cases_per_iter >= 10) {
     
     n_update <- seq(10, niter * n_cases_per_iter, 10)
     boot_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
@@ -218,7 +220,7 @@ active_learning <- function(data,
       if ( verbose ) { print("Update predictions.") }
       
       # Calculated predictions.
-      pred <- update_predictions(labelled, unlabelled, plot = plot) 
+      pred <- update_predictions(labelled, unlabelled, verbose, plot) 
       
       # Add to unlabelled dataset.
       unlabelled %<>% 
@@ -226,10 +228,36 @@ active_learning <- function(data,
                collision_prob1_pred = pred$collision_prob1,
                impact_speed0_pred = pred$impact_speed_pred0, 
                impact_speed1_pred = pred$impact_speed_pred1,
+               impact_speed_reduction_pred = pmax(impact_speed0_pred - impact_speed1_pred, 0), # Never smaller than 0.
                injury_risk0_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed0_pred / 2)))^(-1),
                injury_risk1_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed1_pred / 2)))^(-1),
                injury_risk0_pred = ifelse(impact_speed0_pred > 0, injury_risk0_pred, 0), # Set injury risk to zero if no collision.
-               injury_risk1_pred = ifelse(impact_speed1_pred > 0, injury_risk1_pred, 0))
+               injury_risk1_pred = ifelse(impact_speed1_pred > 0, injury_risk1_pred, 0),
+               injury_risk_reduction_pred = pmax(injury_risk0_pred - injury_risk1_pred, 0)) # Never smaller than 0.
+      
+      if ( verbose ) {
+        
+        cheat <- unlabelled %>% 
+          left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
+        
+        r2_baseline_impact_speed <- with(cheat, cor(impact_speed0, impact_speed0_pred))^2
+        r2_impact_speed_reduction <- with(cheat, cor(impact_speed0 - impact_speed1, impact_speed_reduction_pred))^2
+        r2_injury_risk_reduction <- with(cheat, cor(injury_risk0 - injury_risk1, injury_risk_reduction_pred))^2
+        r2_crash0 <- with(cheat, cor(impact_speed0 > 0, collision_prob0_pred))^2
+        r2_crash1 <- with(cheat, cor(impact_speed1 > 0, collision_prob1_pred))^2
+        
+        cat(sprintf("R-squared, test data:
+Baseline impact speed = %.2f
+Impact speed reduction = %.2f
+Injury risk reduction = %.2f
+Baseline crash probability = %.2f
+Counter-meature crash probability = %.2f.", 
+                    r2_baseline_impact_speed, 
+                    r2_impact_speed_reduction,
+                    r2_injury_risk_reduction,
+                    r2_crash0,
+                    r2_crash1))
+      }
       
     }  # End update predictions.
     
@@ -360,7 +388,7 @@ active_learning <- function(data,
       add_row(new_sample) %>%
       mutate(sampling_weight = old_weight + (new_weight - old_weight) / i) %>% # Update sampling weights. 
       dplyr::select(-old_weight, -new_weight) %>% 
-      group_by(caseID, eoff, acc, eoff_acc_prob, impact_speed0, impact_speed1, injury_risk0, injury_risk1) %>% 
+      group_by(caseID, eoff, acc, eoff_acc_prob, impact_speed0, impact_speed1, injury_risk0, injury_risk1, impact_speed_reduction, injury_risk_reduction) %>% 
       summarise_all(sum) %>% 
       mutate(final_weight = eoff_acc_prob * sampling_weight) %>% 
       ungroup()
@@ -376,7 +404,7 @@ active_learning <- function(data,
       
       boot <- boot(crashes, 
                    statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
-                   R = ifelse(i %in% boot_update_iterations, nboot, 0) ) # Run bootstrap every 10th sample.
+                   R = ifelse(nboot > 0 && i %in% boot_update_iterations, nboot, 0) ) # Run bootstrap every 10th sample.
       
       est <- boot$t0 # Estimates.
       se <- apply(boot$t, 2 , sd) # Standard error of estimates.
