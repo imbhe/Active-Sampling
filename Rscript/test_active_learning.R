@@ -12,7 +12,7 @@ for (i in 1:10) {
   res <- active_learning(df, 
                          sampling_method = "optimised", 
                          proposal_dist = "NA",
-                         target = "crash avoidance", 
+                         target = "impact speed reduction", 
                          use_logic = TRUE,
                          n_cases_per_iter = 10, 
                          niter = 5, 
