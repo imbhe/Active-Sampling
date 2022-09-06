@@ -152,8 +152,8 @@ calculate_sampling_scheme <- function(unlabelled,
     }
     size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
     
-    # Account for baseline collision probability and probability of deceleration-glance pair.
-    # sqrt(collision_prob0_pred) * 
+    # Account for probability of deceleration-glance pair.
+    # To account for baseline collision probability, also multiply by sqrt(collision_prob0_pred)
     size <- with(unlabelled, eoff_acc_prob * size)
     
   } 
