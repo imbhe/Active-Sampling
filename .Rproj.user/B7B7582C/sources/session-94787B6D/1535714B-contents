@@ -241,12 +241,12 @@ update_predictions <- function(labelled, unlabelled, verbose = FALSE, plot = FAL
    # Print.
   if ( verbose ) {
     
-    cat(sprintf("R-squared, training data:
+    cat(sprintf("Out-of-bag R-squared:
 Baseline impact speed = %.2f
 Impact speed reduction = %.2f
 Injury risk reduction = %.2f.
 
-Accuracy, traning data
+Out-of-bag Accuracy:
 Baseline crash probability = %.2f
 Counter-meature crash probability = %.2f.
                 ", 
