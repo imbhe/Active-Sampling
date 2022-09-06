@@ -88,11 +88,11 @@ calculate_sampling_scheme <- function(unlabelled,
     
     if ( target == "impact speed reduction" ) {
       
-      if ( mean(unlabelled$r2_impact_speed_reduciton) < 0 ) { # If prediction R-square is negative: use importance sampling.
+      if ( mean(unlabelled$r2_impact_speed_reduciton) < 0 ) { # If prediction R-square is negative: set all equal.
 
-        size <- with(unlabelled, eoff_acc_prob)
-
-      } else {
+        size <- 1
+        
+      } else { # Else: optimal sampling.
         
         size <- with(unlabelled, sqrt((impact_speed_reduction_pred)^2 + rmse_impact_speed_reduction^2))
 
@@ -100,11 +100,11 @@ calculate_sampling_scheme <- function(unlabelled,
       
     } else if ( target == "injury risk reduction" ) {
       
-      if ( mean(unlabelled$r2_injury_risk_reduciton) < 0 ) { # If prediction R-square is negative: use importance sampling.
+      if ( mean(unlabelled$r2_injury_risk_reduciton) < 0 ) { # If prediction R-square is negative: set all equal.
 
-        size <- with(unlabelled, eoff_acc_prob)
-
-      } else {
+        size <- 1
+        
+      } else { # Else: optimal sampling.
         
         size <- with(unlabelled, sqrt((injury_risk_reduction_pred)^2 + rmse_injury_risk_reduction^2))
 
@@ -113,23 +113,23 @@ calculate_sampling_scheme <- function(unlabelled,
       
     } else if ( target == "baseline impact speed distribution" ) {
       
-      est <- estimate_targets(labelled, weightvar = "final_weight")
-      
-      # Ad-hoc correction for zero SD in small samples.
-      if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { 
-        est["impact_speed0_logSD"] <- Inf
-      }
-      
-      Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
-                  est["impact_speed0_logSD"])
-      sigma <- mean(unlabelled$rmse_log_impact_speed0)
-      r <- sigma / est["impact_speed0_logSD"]
-      
-      if ( mean(unlabelled$r2_impact_speed0) < 0 ) { # If prediction R-square is negative: use importance sampling.
+      if ( mean(unlabelled$r2_impact_speed0) < 0 ) { # If prediction R-square is negative: set all equal.
 
-        size <- with(unlabelled, eoff_acc_prob)
+        size <- 1
 
-      } else {
+      } else { # Else: optimal sampling.
+        
+        est <- estimate_targets(labelled, weightvar = "final_weight")
+        
+        # Ad-hoc correction for zero SD in small samples.
+        if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { 
+          est["impact_speed0_logSD"] <- Inf
+        }
+        
+        Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
+                    est["impact_speed0_logSD"])
+        sigma <- mean(unlabelled$rmse_log_impact_speed0)
+        r <- sigma / est["impact_speed0_logSD"]
         
         size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
         size[is.infinite(size)] <- 0
@@ -153,7 +153,6 @@ calculate_sampling_scheme <- function(unlabelled,
     size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
     
     # Account for probability of deceleration-glance pair.
-    # To account for baseline collision probability, also multiply by sqrt(collision_prob0_pred)
     size <- with(unlabelled, eoff_acc_prob * size)
     
   } 
