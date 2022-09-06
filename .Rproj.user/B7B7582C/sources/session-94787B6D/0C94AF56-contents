@@ -1,0 +1,14 @@
+# Train random forest.
+options(warn = -1)
+sink("msg.txt")
+rf <- safe_caret_train(factor(impact_speed0 > 0, labels = paste0("Y", 0:1)) ~ caseID + eoff + acc, 
+                       data = labelled,
+                       method = "ranger",
+                       num.trees = 100,
+                       tuneLength = 3,
+                       trControl = trainControl(method = "cv",
+                                                number = 5,
+                                                search = "random",
+                                                classProbs = TRUE))
+sink()
+options(warn = defaultW)

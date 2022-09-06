@@ -1,0 +1,11 @@
+
+save(labelled, unlabelled, file = "Data/test_prediction_100.RData")
+
+labelled$caseID <- factor(labelled$caseID)
+
+ranger(impact_speed0 ~ caseID + eoff + acc + maximpact0, 
+       data = labelled,
+       num.trees = 100,
+       case.weights = labelled$final_weight,
+       respect.unordered.factors	= "partition",
+       splitrule = "variance")

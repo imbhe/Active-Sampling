@@ -1,4 +1,39 @@
 
+# Predict impact speed ratio ----
+
+# Train random forest.  
+options(warn = -1)
+rf <- safe_caret_train(impact_speed_ratio ~ caseID + eoff + acc, 
+                       data = labelled %>% filter(impact_speed0 > 0),
+                       method = "ranger",
+                       num.trees = 100,
+                       tuneLength = 3,
+                       trControl = trainControl(method = "cv",
+                                                number = 5,
+                                                search = "random"))
+options(warn = defaultW)
+
+if ( !is.null(rf) ) { # If able to fit model: calculate predictions.
+  
+  # Prediction on labelled and unlabelled data.
+  zhat_train <- predict(rf, labelled)
+  zhat_test <- predict(rf, unlabelled)
+  
+  # Root mean squared error.
+  rmse_zhat <- sqrt(rf$finalModel$prediction.error) 
+  
+} else { # If unable to fit model: set to constant.
+  
+  zhat_train <- 1
+  zhat_test <- 1
+  rmse_zhat <- 0
+  
+}
+
+mutate(impact_speed0 = impact_speed0 / maximpact0,
+impact_speed1 = impact_speed1 / maximpact0,
+impact_speed_ratio = impact_speed1 / impact_speed0)
+
 # Prepare data for model fitting with LASSO.
 form <- ~ -1 + scenario + eoff + log(0.1 + eoff) + acc + log(-acc) + 
   caseID*scenario*eoff*acc + caseID*scenario*log(0.1 + eoff)*log(-acc)

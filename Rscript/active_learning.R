@@ -52,9 +52,9 @@ active_learning <- function(data,
                                               "pps, size = prior weight * severity"), 
                             target = c("NA", # Only used when sampling_method = "optimised", "NA" otherwise.
                                        "baseline impact speed distribution", 
-                                       "impact speed reduction", 
-                                       "crash avoidance",
-                                       "injury risk reduction"),
+                                       "impact speed reduction",
+                                       "injury risk reduction", 
+                                       "crash avoidance"),
                             use_logic = TRUE, # TRUE or FALSE. 
                             n_cases_per_iter = 1,
                             niter = 500, 
@@ -62,6 +62,17 @@ active_learning <- function(data,
                             verbose = FALSE, # TRUE or FALSE.
                             plot = FALSE) { # TRUE or FALSE.
   
+  
+  # Make sure packages are loaded. ----
+  require("boot")
+  require("caret")
+  require("magrittr")
+  require("ranger")
+  require("sampling")
+  require("tidyverse")
+  
+  
+  # Calculate variables. ----
   data %<>% 
     mutate(impact_speed_reduction = impact_speed0 - impact_speed1,
            injury_risk_reduction = injury_risk0 - injury_risk1)
@@ -103,15 +114,6 @@ active_learning <- function(data,
     stop(sprintf("Error in active_learning. n_cases_per_iter must be smaller than or equal to %d (number of cases in input dataset).", 
                  length(unique(df$caseID))))
   }
-
-  
-  # Make sure packages are loaded. ----
-  require("boot")
-  require("caret")
-  require("magrittr")
-  require("ranger")
-  require("sampling")
-  require("tidyverse")
   
   
   # Load helper functions. ----
@@ -220,44 +222,21 @@ active_learning <- function(data,
       if ( verbose ) { print("Update predictions.") }
       
       # Calculated predictions.
-      pred <- update_predictions(labelled, unlabelled, verbose, plot) 
-      
+      pred <- update_predictions(labelled, unlabelled, verbose, plot = FALSE) 
+
       # Add to unlabelled dataset.
       unlabelled %<>% 
         mutate(collision_prob0_pred = pred$collision_prob0,
                collision_prob1_pred = pred$collision_prob1,
-               impact_speed0_pred = pred$impact_speed_pred0, 
-               impact_speed1_pred = pred$impact_speed_pred1,
-               impact_speed_reduction_pred = pmax(impact_speed0_pred - impact_speed1_pred, 0), # Never smaller than 0.
-               injury_risk0_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed0_pred / 2)))^(-1),
-               injury_risk1_pred = (1 + exp(-(-5.35 + 0.11 * impact_speed1_pred / 2)))^(-1),
-               injury_risk0_pred = ifelse(impact_speed0_pred > 0, injury_risk0_pred, 0), # Set injury risk to zero if no collision.
-               injury_risk1_pred = ifelse(impact_speed1_pred > 0, injury_risk1_pred, 0),
-               injury_risk_reduction_pred = pmax(injury_risk0_pred - injury_risk1_pred, 0)) # Never smaller than 0.
-      
-      if ( verbose ) {
-        
-        cheat <- unlabelled %>% 
-          left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
-        
-        r2_baseline_impact_speed <- with(cheat, cor(impact_speed0, impact_speed0_pred))^2
-        r2_impact_speed_reduction <- with(cheat, cor(impact_speed0 - impact_speed1, impact_speed_reduction_pred))^2
-        r2_injury_risk_reduction <- with(cheat, cor(injury_risk0 - injury_risk1, injury_risk_reduction_pred))^2
-        r2_crash0 <- with(cheat, cor(impact_speed0 > 0, collision_prob0_pred))^2
-        r2_crash1 <- with(cheat, cor(impact_speed1 > 0, collision_prob1_pred))^2
-        
-        cat(sprintf("R-squared, test data:
-Baseline impact speed = %.2f
-Impact speed reduction = %.2f
-Injury risk reduction = %.2f
-Baseline crash probability = %.2f
-Counter-meature crash probability = %.2f.", 
-                    r2_baseline_impact_speed, 
-                    r2_impact_speed_reduction,
-                    r2_injury_risk_reduction,
-                    r2_crash0,
-                    r2_crash1))
-      }
+               impact_speed0_pred = pred$impact_speed0_pred, 
+               impact_speed_reduction_pred = pred$impact_speed_reduction_pred,
+               injury_risk_reduction_pred = pred$injury_risk_reduction_pred,
+               rmse_log_impact_speed0 = pred$rmse_log_impact_speed0,
+               rmse_impact_speed_reduction = pred$rmse_impact_speed_reduction,
+               rmse_injury_risk_reduction = pred$rmse_injury_risk_reduction,
+               r2_impact_speed0 = pred$r2_impact_speed0,
+               r2_impact_speed_reduciton = pred$r2_impact_speed_reduction,
+               r2_injury_risk_reduciton = pred$r2_injury_risk_reduction)
       
     }  # End update predictions.
     
@@ -313,20 +292,13 @@ Counter-meature crash probability = %.2f.",
         
       } else {
         
-        # Extract relevant value of sigma (root mean square error of predictions).
+        # Set RMSEs to NA if models has not (yet) been fitted.
         if ( !exists("pred") ) {
-          sigma <- 0
-        } else if ( target == "baseline impact speed distribution" ) {
-          sigma <- pred$rmse["log_impact_speed0"]
-        } else if ( target == "impact speed reduction" ) {
-          sigma <- pred$rmse["impact_speed_reduction"]
-        } else if ( target == "injury risk reduction" ) {
-          sigma <- pred$rmse["injury_risk_reduction"]
-        } else if ( target == "crash avoidance" ) {
-          sigma <- 0
-        } else {
-          stop(sprintf("Error in active_learning > !exists(pred). Case when target = %d not implemented.", target))
-        }
+          unlabelled$rmse_log_impact_speed0 <- NA
+          unlabelled$rmse_impact_speed_reduction <- NA
+          unlabelled$rmse_injury_risk_reduction <- NA
+        } 
+        
         
         # Calculate sampling scheme.
         prob <- calculate_sampling_scheme(unlabelled, 
@@ -334,8 +306,7 @@ Counter-meature crash probability = %.2f.",
                                           sampling_method, 
                                           proposal_dist, 
                                           target, 
-                                          n_cases_per_iter,
-                                          sigma)
+                                          n_cases_per_iter)
         
       } 
       
@@ -419,6 +390,25 @@ Counter-meature crash probability = %.2f.",
     names(se) <- paste0(names(est), "_se")
     names(sqerr) <- paste0(names(est), "_sqerr")
     
+    # Prediction R-squares.
+    if ( sampling_method == "optimised" && exists("pred") ) {
+      
+      r2 <- tibble(r2_impact_speed0 = pred$r2_impact_speed0,
+                   r2_impact_speed_reduction = pred$r2_impact_speed_reduction,
+                   r2_injury_risk_reduction = pred$r2_injury_risk_reduction,
+                   accuracy_crash0 = pred$accuracy_crash0,
+                   accuracy_crash1 = pred$accuracy_crash1)
+      
+    } else {
+      
+      r2 <- tibble(r2_impact_speed0 = NA,
+                   r2_impact_speed_reduction = NA,
+                   r2_injury_risk_reduction = NA,
+                   accuracy_crash0 = NA,
+                   accuracy_crash1 = NA)
+      
+    }
+      
     
     # Append results.
     newres <- tibble(sampling_method = sampling_method,
@@ -439,7 +429,9 @@ Counter-meature crash probability = %.2f.",
       add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
                                           ground_truth["impact_speed0_logSD"],
                                           est["impact_speed0_logmean"], 
-                                          est["impact_speed0_logSD"]))
+                                          est["impact_speed0_logSD"])) %>% 
+      add_column(r2)
+
     
     if ( is.null(res) ) {
       res <- newres
