@@ -426,7 +426,13 @@ active_learning <- function(data,
                      proposal_dist = proposal_dist,
                      target = target,
                      use_logic = use_logic,
-                     n_cases_per_iter = n_cases_per_iter) %>% # Meta-information.
+                     n_cases_per_iter = n_cases_per_iter,
+                     labelled_mean_impact_speed0 = sum(labelled$impact_speed0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_impact_speed1 = sum(labelled$impact_speed1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_injury_risk0 = sum(labelled$injury_risk0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_injury_risk1 = sum(labelled$injury_risk1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_crash_avoidance = sum(crashes$impact_speed1 == 0)*sum(crashes[crashes$impact_speed1 == 0,]$eoff_acc_prob)/
+                       sum(crashes$impact_speed0 > 0)/sum(crashes[crashes$impact_speed0 > 0,]$eoff_acc_prob)) %>% # Meta-information.
       add_column(iter = i, 
                  neff0 = effective_number_simulations0, 
                  neff1 = effective_number_simulations1, 
@@ -440,9 +446,9 @@ active_learning <- function(data,
       add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
                                           ground_truth["impact_speed0_logSD"],
                                           est["impact_speed0_logmean"], 
-                                          est["impact_speed0_logSD"])) %>% 
-      add_column(r2_tbl)
-
+                                          est["impact_speed0_logSD"])) 
+    # add new data information
+    
     
     if ( is.null(res) ) {
       res <- newres
