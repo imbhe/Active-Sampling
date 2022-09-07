@@ -160,6 +160,7 @@ calculate_sampling_scheme <- function(unlabelled,
     }
     size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
 
+    print(range(unlabelled$prev_size)[2] / range(unlabelled$prev_size)[1])
     # Account for probability of deceleration-glance pair.
     #  + Smoothing: take average of (standardised) 'size' in current and previous iteration. 
     size <- with(unlabelled, eoff_acc_prob * (size / sum(size) + prev_size / sum(prev_size)))

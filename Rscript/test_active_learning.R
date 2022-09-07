@@ -15,8 +15,8 @@ for (i in 1:1) {
                          proposal_dist = "NA",
                          target = "baseline impact speed", 
                          use_logic = TRUE,
-                         n_cases_per_iter = 10, 
-                         niter = 9, 
+                         n_cases_per_iter = 5, 
+                         niter = 20, 
                          verbose = TRUE, 
                          plot = TRUE, 
                          nboot = 0)

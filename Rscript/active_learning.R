@@ -315,7 +315,12 @@ active_learning <- function(data,
                                           n_cases_per_iter,
                                           r2 = r2,
                                           rmse = rmse)
-        unlabelled$size <- prob$size
+        
+        # If predictions have been updated: update previous estimate of 'size'.
+        if ( sampling_method == "optimised" && i %in% (model_update_iterations[-1] - 1) ) {
+          print("update size")
+          unlabelled$size <- prob$size
+        }
         
       } 
       
