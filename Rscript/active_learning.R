@@ -318,7 +318,6 @@ active_learning <- function(data,
         
         # If predictions have been updated: update previous estimate of 'size'.
         if ( sampling_method == "optimised" && i %in% (model_update_iterations[-1] - 1) ) {
-          print("update size")
           unlabelled$size <- prob$size
         }
         
