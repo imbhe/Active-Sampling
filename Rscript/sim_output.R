@@ -12,7 +12,7 @@ sim_output <- function(df,input,inputparameter){
   crashes_list<- replicate(Sim_n, data.frame())
   for (k in 1:Sim_n){
     print(paste("simulation",k,"start,","reduced logic is",input$use_logic,", number per iteration:",n_cases_per_iter,",total iteration:",total_iter))
-    set.seed(k+10)
+    set.seed(k+50)
     out <- active_learning (df, sampling_method, 
                             proposal_dist,
                             target, 
@@ -40,12 +40,17 @@ sim_output <- function(df,input,inputparameter){
     aver$use_logic[p] = use_logic
     index[p,] = seq(p,total_iter*Sim_n,total_iter)
     aver$neff0[p] = mean(res$neff0[index[p,]])
+    aver$neff_tot[p] = mean(res$neff_tot[index[p,]])
+    aver$nsim_tot[p] = mean(res$nsim_tot[index[p,]])
+    aver$nsim0[p] = mean(res$nsim0[index[p,]])
+    aver$nsim1[p] = mean(res$nsim1[index[p,]])
     aver$iter[p] = mean(res$iter[p])
     aver$mean_impact_speed0_sqerr[p] = sqrt(mean(res$mean_impact_speed0_sqerr[index[p,]]))
     aver$mean_impact_speed_reduction_sqerr[p] = sqrt(mean(res$mean_impact_speed_reduction_sqerr[index[p,]]))
     aver$crash_avoidance_rate_sqerr[p] = sqrt(mean(res$crash_avoidance_rate_sqerr[index[p,]]))
     aver$mean_injury_risk_reduction_sqerr[p] = sqrt(mean(res$mean_injury_risk_reduction_sqerr[index[p,]]))
     aver$impact_speed0_KLdiv_sqerr[p] = sqrt(mean(res$impact_speed0_KLdiv[index[p,]]))
+    aver$impact_speed0_KLdiv[p] = mean(res$impact_speed0_KLdiv[index[p,]])
     
     aver$sd_mean_impact_speed0_sqerr[p] = sqrt(var(res$mean_impact_speed0_sqerr[index[p,]]))
     aver$sd_mean_impact_speed_reduction_sqerr[p] = sqrt(var(res$mean_impact_speed_reduction_sqerr[index[p,]]))
