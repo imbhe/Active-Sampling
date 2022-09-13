@@ -17,7 +17,7 @@ for (i in 1:1) {
                          target = "injury risk reduction", 
                          use_logic = TRUE,
                          n_cases_per_iter = 5, 
-                         niter = 20, 
+                         niter = 10, 
                          verbose = TRUE, 
                          plot = TRUE, 
                          nboot = 0)

@@ -222,7 +222,7 @@ active_learning <- function(data,
       if ( verbose ) { print("Update predictions.") }
       
       # Calculated predictions.
-      pred <- update_predictions(labelled, unlabelled, target = target, plot = plot, verbose = verbose) 
+      pred <- update_predictions(labelled, unlabelled, target = target) 
       
       # Prediction R-squared and RMSE.
       r2 <- list(impact_speed0 = pred$r2_impact_speed0,
@@ -393,9 +393,9 @@ active_learning <- function(data,
       add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
                                           ground_truth["impact_speed0_logSD"],
                                           est["impact_speed0_logmean"], 
-                                          est["impact_speed0_logSD"])) 
-    # add new data information
-    
+                                          est["impact_speed0_logSD"])) %>% 
+      add_column(r2_tbl)
+
     
     if ( is.null(res) ) {
       res <- newres
