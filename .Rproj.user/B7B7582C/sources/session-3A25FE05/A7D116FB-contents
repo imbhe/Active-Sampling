@@ -222,12 +222,12 @@ active_learning <- function(data,
       if ( verbose ) { print("Update predictions.") }
       
       # Calculated predictions.
-      pred <- update_predictions(labelled, unlabelled) 
+      pred <- update_predictions(labelled, unlabelled, target = target, plot = plot, verbose = verbose) 
       
       # Prediction R-squared and RMSE.
       r2 <- list(impact_speed0 = pred$r2_impact_speed0,
-                 impact_speed_reduciton = pred$r2_impact_speed_reduction,
-                 injury_risk_reduciton = pred$r2_injury_risk_reduction,
+                 impact_speed_reduction = pred$r2_impact_speed_reduction,
+                 injury_risk_reduction = pred$r2_injury_risk_reduction,
                  accuracy_crash0 = pred$accuracy_crash0,
                  accuracy_crash1 = pred$accuracy_crash1)
       
@@ -252,14 +252,21 @@ active_learning <- function(data,
     # or if prediction models for optimised sampling has not (yet) been fitted.
     if ( sampling_method != "optimised" | !exists("pred") ) {
       r2 <- list(impact_speed0 = NA_real_,
-                 impact_speed_reduciton = NA_real_,
-                 injury_risk_reduciton = NA_real_,
+                 impact_speed_reduction = NA_real_,
+                 injury_risk_reduction = NA_real_,
                  accuracy_crash0 = NA_real_,
                  accuracy_crash1 = NA_real_)
       rmse <- list(log_impact_speed0 = NA,
                    impact_speed_reduction = NA,
                    injury_risk_reduction = NA)
     } 
+    
+    
+    # Sets estimates to NA if target quantities have not (yet) been estimated.
+    if ( !exists("est") ) {
+      est <- estimate_targets(labelled)
+    }
+    
     
     # Calculate sampling scheme.
     prob <- calculate_sampling_scheme(unlabelled, 
@@ -268,6 +275,7 @@ active_learning <- function(data,
                                       proposal_dist, 
                                       target, 
                                       n_cases_per_iter,
+                                      est = as.list(est),
                                       r2 = r2,
                                       rmse = rmse)
     
@@ -365,7 +373,13 @@ active_learning <- function(data,
                      proposal_dist = proposal_dist,
                      target = target,
                      use_logic = use_logic,
-                     n_cases_per_iter = n_cases_per_iter) %>% # Meta-information.
+                     n_cases_per_iter = n_cases_per_iter,
+                     labelled_mean_impact_speed0 = sum(labelled$impact_speed0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_impact_speed1 = sum(labelled$impact_speed1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_injury_risk0 = sum(labelled$injury_risk0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_injury_risk1 = sum(labelled$injury_risk1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
+                     labelled_mean_crash_avoidance = sum(crashes$impact_speed1 == 0)*sum(crashes[crashes$impact_speed1 == 0,]$eoff_acc_prob)/
+                       sum(crashes$impact_speed0 > 0)/sum(crashes[crashes$impact_speed0 > 0,]$eoff_acc_prob)) %>% # Meta-information.
       add_column(iter = i, 
                  neff0 = effective_number_simulations0, 
                  neff1 = effective_number_simulations1, 
@@ -379,9 +393,9 @@ active_learning <- function(data,
       add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
                                           ground_truth["impact_speed0_logSD"],
                                           est["impact_speed0_logmean"], 
-                                          est["impact_speed0_logSD"])) %>% 
-      add_column(r2_tbl)
-
+                                          est["impact_speed0_logSD"])) 
+    # add new data information
+    
     
     if ( is.null(res) ) {
       res <- newres

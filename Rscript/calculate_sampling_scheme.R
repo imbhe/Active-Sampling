@@ -14,6 +14,7 @@ calculate_sampling_scheme <- function(unlabelled,
                                                  "injury risk reduction", 
                                                  "crash avoidance"),
                                       n_cases = 1,
+                                      est = NULL,
                                       r2 = NULL,
                                       rmse = NULL) {
 
@@ -74,17 +75,17 @@ calculate_sampling_scheme <- function(unlabelled,
   
   
   # Calculate 'size' of pps (probability proportional to size) sampling. ----
-  if ( sampling_method == "SRS" ) {
+  if ( sampling_method == "SRS" ) { 
     
     size <- rep(1, nrow(unlabelled))
     
   } else if ( sampling_method == "importance sampling" ) {
     
-    if ( proposal_dist == "pps, size = prior weight" ) {
+    if ( proposal_dist == "pps, size = prior weight" ) { # Density sampling.
       
       size <- with(unlabelled, eoff_acc_prob)
       
-    } else if ( proposal_dist == "pps, size = prior weight * severity" ) {
+    } else if ( proposal_dist == "pps, size = prior weight * severity" ) { # Severity sampling.
       
       # Severity is assumed to increase with increase in EOFF, deceleration and 
       # maximal impact speed under baseline scenario. 
@@ -96,72 +97,57 @@ calculate_sampling_scheme <- function(unlabelled,
     
     if ( target == "impact speed reduction" ) {
       
-      if ( is.na(r2$impact_speed_reduciton) | r2$impact_speed_reduciton < 0 ) { # If prediction R-square is missing or negative: set all equal.
-
-        size <- 1
-
-      } else { # Else: optimal sampling.
-        
-        size <- with(unlabelled, sqrt((impact_speed_reduction_pred)^2 + rmse$impact_speed_reduction^2))
-
+      # If prediction R-square is missing or negative: set all equal.
+      # Else: calculate Z-score.
+      if ( is.na(r2$impact_speed_reduction) | r2$impact_speed_reduction < 0 ) { 
+        Z <- 1
+      } else { 
+        Z <- (unlabelled$impact_speed_reduction_pred - est$mean_impact_speed_reduction) / 
+          rmse$impact_speed_reduction
       }
+      
+      size <- sqrt(1 + Z^2)
       
     } else if ( target == "injury risk reduction" ) {
       
-      if ( is.na(r2$injury_risk_reduciton) | r2$injury_risk_reduciton < 0 ) { # If prediction R-square is missing or negative: set all equal.
-
-        size <- 1
-
-      } else { # Else: optimal sampling.
-        
-        size <- with(unlabelled, sqrt((injury_risk_reduction_pred)^2 + rmse$injury_risk_reduction^2))
-
+      # If prediction R-square is missing or negative: set all equal.
+      # Else: calculate Z-score.
+      if ( is.na(r2$injury_risk_reduction) | r2$injury_risk_reduction < 0 ) { 
+        Z <- 1
+      } else { 
+        Z <- (unlabelled$injury_risk_reduction_pred - est$mean_injury_risk_reduction) / 
+          rmse$injury_risk_reduction
       }
       
+      size <- sqrt(1 + Z^2)
       
     } else if ( target == "baseline impact speed distribution" ) {
       
-      if ( is.na(r2$impact_speed0) | r2$impact_speed0 < 0 ) { # If prediction R-square is missing or negative: set all equal.
-
-        size <- 1
-
-      } else { # Else: optimal sampling.
-        
-        est <- estimate_targets(labelled, weightvar = "final_weight")
-        
-        # Ad-hoc correction for zero SD in small samples.
-        if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { 
-          est["impact_speed0_logSD"] <- Inf
-        }
-        
-        Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
-                    est["impact_speed0_logSD"])
-        sigma <- rmse$log_impact_speed0
-        r <- sigma / est["impact_speed0_logSD"]
-        
-        size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
-        size[is.infinite(size)] <- 0
-
+      # If prediction R-square is missing or negative: set all equal.
+      # Else: calculate Z-score.
+      if ( is.na(r2$impact_speed0) | r2$impact_speed0 < 0 ) { 
+        Z <- 1
+      } else { 
+        Z <- (log(unlabelled$impact_speed0_pred) - est$impact_speed0_logmean) / 
+                    est$impact_speed0_logSD
       }
-
+      
+      r <- rmse$log_impact_speed0 / est$impact_speed0_logSD
+      size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
       
     } else if ( target == "crash avoidance" ) {
       
-      if ( is.na(r2$accuracy_crash1) | r2$accuracy_crash1 < 0 ) {  # If prediction accuracy is missing or negative: set all equal.
-        
-        size <- 1
-
-      } else {
-        
-        crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
-        rr <- 1 - estimate_targets(crashes, weightvar = "final_weight")["crash_avoidance_rate"]
-        size <- with(unlabelled, sqrt(rr^2 - collision_prob1_pred * (2 * rr - 1)))
-        
-      }
+      # If prediction accuracy is missing or negative: set all equal.
+      if ( is.na(r2$accuracy_crash1) | r2$accuracy_crash1 < 0 ) {  
+        unlabelled$collision_prob1_pred <- 1
+      } 
+      
+      rr <- 1 - est$crash_avoidance_rate
+      size <- with(unlabelled, sqrt(rr^2 - collision_prob1_pred * (2 * rr - 1)))
       
     } 
     
-    # If no positive 'sizes' found -> set all equal. 
+    # If any invalid or no positive 'sizes' found -> set all equal. 
     if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
       size[1:length(size)] <- 1
     }
@@ -169,15 +155,11 @@ calculate_sampling_scheme <- function(unlabelled,
     
     
     # Account for baseline crash probability.
-    if ( is.na(r2$accuracy_crash0) | r2$accuracy_crash0 < 0 ) {  # If prediction accuracy is missing or negative: set all equal.
-      
-      size <- size
-      
-    } else {
-      
-      size <- size * sqrt(collision_prob0_pred)
-      
-    }
+    # If prediction accuracy is missing or negative: set all equal.
+    if ( is.na(r2$accuracy_crash0) | r2$accuracy_crash0 < 0 ) {  
+      unlabelled$collision_prob0_pred <- 1
+    } 
+    size <- size * sqrt(unlabelled$collision_prob0_pred)
     
     
     # Account for probability of deceleration-glance pair.

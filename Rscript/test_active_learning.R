@@ -14,10 +14,10 @@ for (i in 1:1) {
   res <- active_learning(df, 
                          sampling_method = "optimised", 
                          proposal_dist = "NA",
-                         target = "baseline impact speed distribution", 
-                         use_logic = FALSE,
+                         target = "injury risk reduction", 
+                         use_logic = TRUE,
                          n_cases_per_iter = 5, 
-                         niter = 5, 
+                         niter = 20, 
                          verbose = TRUE, 
                          plot = TRUE, 
                          nboot = 0)
