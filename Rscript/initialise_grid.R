@@ -1,4 +1,4 @@
-initialise_grid <- function(data, grid, use_logic) {
+initialise_grid <- function(data, grid, reduce_simulations_by_logic) {
   
   # Labelled dataset.
   labelled <- data %>% 
@@ -6,7 +6,8 @@ initialise_grid <- function(data, grid, use_logic) {
     mutate(sim_count0 = 0, 
            sim_count1 = 0, 
            sampling_weight = 0, 
-           final_weight = 0) 
+           final_weight = 0,
+           iter = 0) 
   
   # Unlabelled dataset.
   n <- nrow(data)
@@ -26,8 +27,9 @@ initialise_grid <- function(data, grid, use_logic) {
            max_impact1 = NA_integer_,
            sim_count0 = 1,
            sim_count1 = 1,
-           sim_count1 = ifelse(impact_speed0 <= 0 & use_logic, 0, sim_count1),
-           size = eoff_acc_prob) 
+           sim_count1 = ifelse(impact_speed0 <= 0 & reduce_simulations_by_logic, 0, sim_count1),
+           size = NA,
+           iter = NA) 
   
   return(list(labelled = labelled, unlabelled = unlabelled))
 }

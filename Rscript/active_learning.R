@@ -320,7 +320,8 @@ active_learning <- function(data,
       mutate(old_weight = 0, 
              new_weight = new_wt) %>% 
       filter(new_weight > 0) %>% 
-      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, old_weight, new_weight) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, old_weight, new_weight, iter) %>% 
+      mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
     
     
@@ -331,7 +332,7 @@ active_learning <- function(data,
       add_row(new_sample) %>%
       mutate(sampling_weight = old_weight + (new_weight - old_weight) / i) %>% # Update sampling weights. 
       dplyr::select(-old_weight, -new_weight) %>% 
-      group_by(caseID, eoff, acc, eoff_acc_prob, impact_speed0, impact_speed1, injury_risk0, injury_risk1, impact_speed_reduction, injury_risk_reduction) %>% 
+      group_by(caseID, eoff, acc, eoff_acc_prob, iter, impact_speed0, impact_speed1, injury_risk0, injury_risk1, impact_speed_reduction, injury_risk_reduction) %>% 
       summarise_all(sum) %>% 
       mutate(final_weight = eoff_acc_prob * sampling_weight) %>% 
       ungroup()
