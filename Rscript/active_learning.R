@@ -263,7 +263,7 @@ active_learning <- function(data,
     
     # Sets estimates to NA if target quantities have not (yet) been estimated.
     if ( !exists("est") ) {
-      est <- estimate_targets(labelled)
+      est <- estimate_targets(labelled, weightvar = "eoff_acc_prob")
     }
     
     # Calculate sampling scheme.

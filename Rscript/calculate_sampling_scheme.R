@@ -161,6 +161,8 @@ calculate_sampling_scheme <- function(unlabelled,
     } 
     size <- size * sqrt(unlabelled$collision_prob0_pred)
     
+    unlabelled$prev_size[is.na(unlabelled$prev_size)] <- 1
+    
     
     # Account for probability of deceleration-glance pair.
     #  + Smoothing: take average of (standardised) 'size' in current and previous iteration. 
@@ -170,7 +172,6 @@ calculate_sampling_scheme <- function(unlabelled,
   
   # Probability proportional to size.
   sampling_probability <- n_cases * size / sum(size)
-  
   
   # Adjustment to account for sampling of multiple cases per iteration. ----
   case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)
