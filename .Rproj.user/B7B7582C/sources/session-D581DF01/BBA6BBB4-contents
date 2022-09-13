@@ -6,6 +6,7 @@ load("Data/glance_dec_data_test.R")
 source("RScript/active_learning.R")
 set.seed(123)
 par(mfrow = c(1, 3))
+cat("\14")
 
 for (i in 1:1) {
   tic()
@@ -13,10 +14,10 @@ for (i in 1:1) {
   res <- active_learning(df, 
                          sampling_method = "optimised", 
                          proposal_dist = "NA",
-                         target = "baseline impact speed", 
-                         use_logic = TRUE,
+                         target = "baseline impact speed distribution", 
+                         use_logic = FALSE,
                          n_cases_per_iter = 5, 
-                         niter = 20, 
+                         niter = 5, 
                          verbose = TRUE, 
                          plot = TRUE, 
                          nboot = 0)
