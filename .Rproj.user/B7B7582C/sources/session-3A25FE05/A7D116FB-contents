@@ -261,12 +261,10 @@ active_learning <- function(data,
                    injury_risk_reduction = NA)
     } 
     
-    
     # Sets estimates to NA if target quantities have not (yet) been estimated.
     if ( !exists("est") ) {
       est <- estimate_targets(labelled)
     }
-    
     
     # Calculate sampling scheme.
     prob <- calculate_sampling_scheme(unlabelled, 
@@ -280,6 +278,7 @@ active_learning <- function(data,
                                       rmse = rmse)
     
     # If predictions have been updated: update previous estimate of 'size'.
+    # Only use with optimised sampling.
     if ( sampling_method == "optimised" && i %in% (model_update_iterations[-1] - 1) ) {
       unlabelled$size <- prob$size
     }
@@ -393,8 +392,8 @@ active_learning <- function(data,
       add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
                                           ground_truth["impact_speed0_logSD"],
                                           est["impact_speed0_logmean"], 
-                                          est["impact_speed0_logSD"])) %>% 
-      add_column(r2_tbl)
+                                          est["impact_speed0_logSD"])) %>% # Kullback-Leibler divergence.
+      add_column(r2_tbl) # Prediction R-squared and accuracy.
 
     
     if ( is.null(res) ) {
