@@ -1,27 +1,27 @@
 {
-    "id": "D8E3C025",
-    "path": "~/GitHub/Glance_sampling/Rscript/update_predictions.R",
-    "project_path": "Rscript/update_predictions.R",
+    "id": "67422996",
+    "path": "~/GitHub/Glance_sampling/Rscript/test_active_learning.R",
+    "project_path": "Rscript/test_active_learning.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1663047645481.0,
+    "created": 1663127909324.0,
     "source_on_save": false,
-    "relative_order": 4,
+    "relative_order": 1,
     "properties": {
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "153,39",
-        "scrollLine": "134"
+        "cursorPosition": "12,25",
+        "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1663062402,
+    "lastKnownWriteTime": 1663139440,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1663062402110,
+    "last_content_update": 1663139440733,
     "read_only": false,
     "read_only_alternatives": []
 }

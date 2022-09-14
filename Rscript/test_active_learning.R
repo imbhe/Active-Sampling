@@ -14,12 +14,12 @@ for (i in 1:1) {
   res <- active_learning(df, 
                          sampling_method = "optimised", 
                          proposal_dist = "NA",
-                         target = "injury risk reduction", 
+                         target = "all", 
                          use_logic = TRUE,
                          n_cases_per_iter = 5, 
                          niter = 10, 
                          verbose = TRUE, 
-                         plot = TRUE, 
+                         plot = FALSE, 
                          nboot = 0)
   toc()
 }

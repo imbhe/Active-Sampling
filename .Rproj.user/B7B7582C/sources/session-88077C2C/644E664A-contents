@@ -1,5 +1,17 @@
-update_predictions <- function(labelled, unlabelled, target = NULL, verbose = FALSE, plot = FALSE) {
+update_predictions <- function(labelled, 
+                               unlabelled, 
+                               target = c("baseline impact speed distribution", 
+                                          "impact speed reduction",
+                                          "injury risk reduction", 
+                                          "crash avoidance",
+                                          "all"),
+                               verbose = FALSE, 
+                               plot = FALSE) {
 
+  # Check input parameters.
+  target <- match.arg(target)
+  
+  # Store default handling of warning messages.
   defaultW <- getOption("warn")
   
   # Calculate maximal impact speed per case.
@@ -108,7 +120,7 @@ update_predictions <- function(labelled, unlabelled, target = NULL, verbose = FA
   
  
   # Predict impact speed reduction ----
-  if ( target == "impact speed reduction" ) {
+  if ( target %in% c("impact speed reduction", "all") ) {
     
     # Train random forest.  
     options(warn = -1)
@@ -151,7 +163,7 @@ update_predictions <- function(labelled, unlabelled, target = NULL, verbose = FA
   
   
   # Predict injury risk reduction. ----
-  if ( target == "injury risk reduction" ) {
+  if ( target %in% c("injury risk reduction", "all") ) {
     
     # Train random forest.  
     options(warn = -1)
@@ -195,7 +207,7 @@ update_predictions <- function(labelled, unlabelled, target = NULL, verbose = FA
   
   
   # Estimate counter-measure collision probability. ----
-  if ( target == "crash avoidance" ) {
+  if ( target %in% c("crash avoidance", "all") ) {
     
     # Train random forest.  
     options(warn = -1)
@@ -299,7 +311,7 @@ Counter-meature crash probability = %.2f.
     plot(unlabelled$eoff, xhat_test, bty = "l", col = unlabelled$caseID, ylim = range(unlabelled$impact_speed0))
     par(mfrow = c(1, 1))
     
-    if ( target == "impact speed reduction" ) {
+    if ( target %in% c("impact speed reduction", "all") ) {
       
       par(mfrow = c(1, 3))
       plot(crashes$impact_speed_reduction_pred, crashes$impact_speed_reduction, bty = "l", col = crashes$caseID, xlim = range(crashes$impact_speed_reduction))
@@ -316,7 +328,7 @@ Counter-meature crash probability = %.2f.
       
     }
     
-    if (target == "injury risk reduction" ) {
+    if ( target %in% c("injury risk reduction", "all") ) {
       
       par(mfrow = c(1, 3))
       plot(crashes$injury_risk_reduction_pred, crashes$injury_risk_reduction, bty = "l", col = crashes$caseID, xlim = range(crashes$injury_risk_reduction))
@@ -333,7 +345,7 @@ Counter-meature crash probability = %.2f.
       
     }
     
-    if (target == "crash avoidance") {
+    if ( target %in% c("crash avoidance", "all") ) {
       par(mfrow = c(1, 2))
       plot(crashes$collision_prob1_pred, crashes$impact_speed1 > 0, col = crashes$caseID, bty = "l")
       plot(p1_test, unlabelled$impact_speed1 > 0, bty = "l", col = unlabelled$caseID)

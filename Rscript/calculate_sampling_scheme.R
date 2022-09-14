@@ -12,7 +12,8 @@ calculate_sampling_scheme <- function(unlabelled,
                                                  "counter-measure injury risk", 
                                                  "impact speed reduction",
                                                  "injury risk reduction", 
-                                                 "crash avoidance"),
+                                                 "crash avoidance", 
+                                                 "all"),
                                       n_cases = 1,
                                       est = NULL,
                                       r2 = NULL,
@@ -95,7 +96,9 @@ calculate_sampling_scheme <- function(unlabelled,
     
   } else if ( sampling_method == "optimised" ) {
     
-    if ( target == "impact speed reduction" ) {
+    size_mat <- matrix(NA, nrow = nrow(unlabelled), ncol = 4) # Matrix to store results.
+
+    if ( target %in% c("impact speed reduction", "all") ) {
       
       # If prediction R-square is missing or negative: set all equal.
       # Else: calculate Z-score.
@@ -107,8 +110,11 @@ calculate_sampling_scheme <- function(unlabelled,
       }
       
       size <- sqrt(1 + Z^2)
+      size_mat[, 1] <- size
       
-    } else if ( target == "injury risk reduction" ) {
+    } 
+    
+    if ( target %in% c("injury risk reduction", "all") ) {
       
       # If prediction R-square is missing or negative: set all equal.
       # Else: calculate Z-score.
@@ -120,8 +126,11 @@ calculate_sampling_scheme <- function(unlabelled,
       }
       
       size <- sqrt(1 + Z^2)
+      size_mat[, 2] <- size
       
-    } else if ( target == "baseline impact speed distribution" ) {
+    } 
+    
+    if ( target %in% c("baseline impact speed distribution", "all") ) {
       
       # If prediction R-square is missing or negative: set all equal.
       # Else: calculate Z-score.
@@ -134,8 +143,11 @@ calculate_sampling_scheme <- function(unlabelled,
       
       r <- rmse$log_impact_speed0 / est$impact_speed0_logSD
       size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
-      
-    } else if ( target == "crash avoidance" ) {
+      size_mat[, 3] <- size
+
+    } 
+    
+    if ( target %in% c("crash avoidance", "all") ) {
       
       # If prediction accuracy is missing or negative: set all equal.
       if ( is.na(r2$accuracy_crash1) | r2$accuracy_crash1 < 0 ) {  
@@ -144,14 +156,44 @@ calculate_sampling_scheme <- function(unlabelled,
       
       rr <- 1 - est$crash_avoidance_rate
       size <- with(unlabelled, sqrt(rr^2 - collision_prob1_pred * (2 * rr - 1)))
+      size_mat[, 4] <- size
       
     } 
     
-    # If any invalid or no positive 'sizes' found -> set all equal. 
-    if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
-      size[1:length(size)] <- 1
+    
+    # Check that all 'sizes' are valid.
+    if ( target == "all" ) {
+      
+      for ( i in 1:ncol(size_mat) ) {
+        
+        size <- size_mat[, i]
+        
+        # If any invalid or no positive 'sizes' found -> set all equal. 
+        if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
+          size <- 1
+        }
+        size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
+        
+        size <- size^2 / sum(size^2) # Calculate squares and standardise.
+        size_mat[, i] <- size # Store.
+        
+      }
+      
+    } else {
+      
+      # If any invalid or no positive 'sizes' found -> set all equal. 
+      if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
+        size <- 1
+      }
+      size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
+      
     }
-    size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
+    
+    
+    # If target = "all": use 'average' (root mean squared size).
+    if ( target == "all" ) { 
+      size <- sqrt(rowMeans(size_mat)) 
+    }
     
     
     # Account for baseline crash probability.
@@ -163,8 +205,8 @@ calculate_sampling_scheme <- function(unlabelled,
     
     
     # Account for probability of deceleration-glance pair.
-    #  + Smoothing: take average of (standardised) 'size' in current and previous iteration. 
-    size <- with(unlabelled, eoff_acc_prob * (size / sum(size) + prev_size / sum(prev_size)))
+    #  + Smoothing: take 'average' (sqrt(x^2 + y^2)) of standardised 'size' in current and previous model update iteration. 
+    size <- with(unlabelled, eoff_acc_prob * sqrt((size^2 / sum(size^2) + prev_size^2 / sum(prev_size^2))))
         
   } 
   
