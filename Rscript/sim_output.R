@@ -12,7 +12,7 @@ sim_output <- function(df,input,inputparameter){
   crashes_list<- replicate(Sim_n, data.frame())
   for (k in 1:Sim_n){
     print(paste("simulation",k,"start,","reduced logic is",input$use_logic,", number per iteration:",n_cases_per_iter,",total iteration:",total_iter))
-    set.seed(k+50)
+    set.seed(k)
     out <- active_learning (df, sampling_method, 
                             proposal_dist,
                             target, 

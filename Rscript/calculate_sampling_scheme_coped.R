@@ -12,10 +12,8 @@ calculate_sampling_scheme <- function(unlabelled,
                                                  "counter-measure injury risk", 
                                                  "impact speed reduction",
                                                  "injury risk reduction", 
-                                                 "crash avoidance", 
-                                                 "all"),
+                                                 "crash avoidance"),
                                       n_cases = 1,
-                                      est = NULL,
                                       r2 = NULL,
                                       rmse = NULL) {
 
@@ -76,17 +74,17 @@ calculate_sampling_scheme <- function(unlabelled,
   
   
   # Calculate 'size' of pps (probability proportional to size) sampling. ----
-  if ( sampling_method == "SRS" ) { 
+  if ( sampling_method == "SRS" ) {
     
     size <- rep(1, nrow(unlabelled))
     
   } else if ( sampling_method == "importance sampling" ) {
     
-    if ( proposal_dist == "pps, size = prior weight" ) { # Density sampling.
+    if ( proposal_dist == "pps, size = prior weight" ) {
       
       size <- with(unlabelled, eoff_acc_prob)
       
-    } else if ( proposal_dist == "pps, size = prior weight * severity" ) { # Severity sampling.
+    } else if ( proposal_dist == "pps, size = prior weight * severity" ) {
       
       # Severity is assumed to increase with increase in EOFF, deceleration and 
       # maximal impact speed under baseline scenario. 
@@ -96,124 +94,81 @@ calculate_sampling_scheme <- function(unlabelled,
     
   } else if ( sampling_method == "optimised" ) {
     
-    size_mat <- matrix(NA, nrow = nrow(unlabelled), ncol = 4) # Matrix to store results.
+    if ( target == "impact speed reduction" ) {
+      
+      if ( is.na(r2$impact_speed_reduciton) | r2$impact_speed_reduciton < 0 ) { # If prediction R-square is negative: set all equal.
 
-    if ( target %in% c("impact speed reduction", "all") ) {
-      
-      # If prediction R-square is missing or negative: set all equal.
-      # Else: calculate Z-score.
-      if ( is.na(r2$impact_speed_reduction) | r2$impact_speed_reduction < 0 ) { 
-        Z <- 1
-      } else { 
-        Z <- (unlabelled$impact_speed_reduction_pred - est$mean_impact_speed_reduction) / 
-          rmse$impact_speed_reduction
-      }
-      
-      size <- sqrt(1 + Z^2)
-      size_mat[, 1] <- size
-      
-    } 
-    
-    if ( target %in% c("injury risk reduction", "all") ) {
-      
-      # If prediction R-square is missing or negative: set all equal.
-      # Else: calculate Z-score.
-      if ( is.na(r2$injury_risk_reduction) | r2$injury_risk_reduction < 0 ) { 
-        Z <- 1
-      } else { 
-        Z <- (unlabelled$injury_risk_reduction_pred - est$mean_injury_risk_reduction) / 
-          rmse$injury_risk_reduction
-      }
-      
-      size <- sqrt(1 + Z^2)
-      size_mat[, 2] <- size
-      
-    } 
-    
-    if ( target %in% c("baseline impact speed distribution", "all") ) {
-      
-      # If prediction R-square is missing or negative: set all equal.
-      # Else: calculate Z-score.
-      if ( is.na(r2$impact_speed0) | r2$impact_speed0 < 0 ) { 
-        Z <- 1
-      } else { 
-        Z <- (log(unlabelled$impact_speed0_pred) - est$impact_speed0_logmean) / 
-                    est$impact_speed0_logSD
-      }
-      
-      r <- rmse$log_impact_speed0 / est$impact_speed0_logSD
-      size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
-      size_mat[, 3] <- size
-
-    } 
-    
-    if ( target %in% c("crash avoidance", "all") ) {
-      
-      # If prediction accuracy is missing or negative: set all equal.
-      if ( is.na(r2$accuracy_crash1) | r2$accuracy_crash1 < 0 ) {  
-        unlabelled$collision_prob1_pred <- 1
-      } 
-      
-      rr <- 1 - est$crash_avoidance_rate
-      size <- with(unlabelled, sqrt(rr^2 - collision_prob1_pred * (2 * rr - 1)))
-      size_mat[, 4] <- size
-      
-    } 
-    
-    
-    # Check that all 'sizes' are valid.
-    if ( target == "all" ) {
-      
-      for ( i in 1:ncol(size_mat) ) {
-        
-        size <- size_mat[, i]
-        
-        # If any invalid or no positive 'sizes' found -> set all equal. 
-        if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
-          size <- 1
-        }
-        size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
-        
-        size <- size^2 / sum(size^2) # Calculate squares and standardise.
-        size_mat[, i] <- size # Store.
-        
-      }
-      
-    } else {
-      
-      # If any invalid or no positive 'sizes' found -> set all equal. 
-      if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
         size <- 1
+        
+      } else { # Else: optimal sampling.
+        
+        size <- with(unlabelled, sqrt((impact_speed_reduction_pred)^2 + rmse$impact_speed_reduction^2))
+
       }
-      size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
       
-    }
-    
-    
-    # If target = "all": use 'average' (root mean squared size).
-    if ( target == "all" ) { 
-      size <- sqrt(rowMeans(size_mat)) 
-    }
-    
-    
-    # Account for baseline crash probability.
-    # If prediction accuracy is missing or negative: set all equal.
-    if ( is.na(r2$accuracy_crash0) | r2$accuracy_crash0 < 0 ) {  
-      unlabelled$collision_prob0_pred <- 1
+    } else if ( target == "injury risk reduction" ) {
+      
+      if ( is.na(r2$injury_risk_reduciton) | r2$injury_risk_reduciton < 0 ) { # If prediction R-square is negative: set all equal.
+
+        size <- 1
+        
+      } else { # Else: optimal sampling.
+        
+        size <- with(unlabelled, sqrt((injury_risk_reduction_pred)^2 + rmse$injury_risk_reduction^2))
+
+      }
+      
+      
+    } else if ( target == "baseline impact speed distribution" ) {
+      
+      if ( is.na(r2$impact_speed0) | r2$impact_speed0 < 0 ) { # If prediction R-square is negative: set all equal.
+
+        size <- 1
+
+      } else { # Else: optimal sampling.
+        
+        est <- estimate_targets(labelled, weightvar = "final_weight")
+        
+        # Ad-hoc correction for zero SD in small samples.
+        if ( is.null(est) || is.na(est["impact_speed0_logSD"]) | est["impact_speed0_logSD"] == 0 ) { 
+          est["impact_speed0_logSD"] <- Inf
+        }
+        
+        Z <- with(unlabelled, (log(impact_speed0_pred) - est["impact_speed0_logmean"]) / 
+                    est["impact_speed0_logSD"])
+        sigma <- rmse$log_impact_speed0
+        r <- sigma / est["impact_speed0_logSD"]
+        
+        size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
+        size[is.infinite(size)] <- 0
+
+      }
+
+      
+    } else if ( target == "crash avoidance" ) {
+      
+      crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
+      rr <- 1 - estimate_targets(crashes, weightvar = "final_weight")["crash_avoidance_rate"]
+      size <- with(unlabelled, sqrt(rr^2 - collision_prob1_pred * (2 * rr - 1)))
+
     } 
-    size <- size * sqrt(unlabelled$collision_prob0_pred)
     
-    unlabelled$prev_size[is.na(unlabelled$prev_size)] <- 1
-    
-    
+    # If no positive 'sizes' found -> set all equal. 
+    # Becomes same as importance sampling with probability proportional to EOFF-ACC probability.
+    if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
+      size[1:length(size)] <- 1
+    }
+    size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
+
     # Account for probability of deceleration-glance pair.
-    #  + Smoothing: take 'average' (sqrt(x^2 + y^2)) of standardised 'size' in current and previous model update iteration. 
-    size <- with(unlabelled, eoff_acc_prob * sqrt((size^2 / sum(size^2) + prev_size^2 / sum(prev_size^2))))
+    #  + Smoothing: take average of (standardised) 'size' in current and previous iteration. 
+    size <- with(unlabelled, eoff_acc_prob * (size / sum(size) + prev_size / sum(prev_size)))
         
   } 
   
   # Probability proportional to size.
   sampling_probability <- n_cases * size / sum(size)
+  
   
   # Adjustment to account for sampling of multiple cases per iteration. ----
   case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)
