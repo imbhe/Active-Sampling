@@ -19,7 +19,7 @@ for (i in 1:1) {
                          n_cases_per_iter = 5, 
                          niter = 10, 
                          verbose = TRUE, 
-                         plot = FALSE, 
+                         plot = TRUE, 
                          nboot = 0)
   toc()
 }

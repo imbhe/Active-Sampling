@@ -202,14 +202,12 @@ calculate_sampling_scheme <- function(unlabelled,
       unlabelled$collision_prob0_pred <- 1
     } 
     size <- size * sqrt(unlabelled$collision_prob0_pred)
-    
-    unlabelled$prev_size[is.na(unlabelled$prev_size)] <- 1
-    
+
     
     # Account for probability of deceleration-glance pair.
     #  + Smoothing: take 'average' (sqrt(x^2 + y^2)) of standardised 'size' in current and previous model update iteration. 
     size <- with(unlabelled, eoff_acc_prob * sqrt((size^2 / sum(size^2) + prev_size^2 / sum(prev_size^2))))
-        
+
   } 
   
   # Probability proportional to size.
