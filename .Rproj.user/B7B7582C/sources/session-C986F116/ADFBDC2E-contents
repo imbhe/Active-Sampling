@@ -142,7 +142,7 @@ active_learning <- function(data,
   # Find corresponding iteration indices model_update_iterations.
   if ( sampling_method == "optimised" ) {
 
-    n_update <- c(seq(10, 100, 10), seq(150, 500, 50), seq(600, 1000, 100), seq(1500, 5000, 500), seq(6000, 10000, 1000))
+    n_update <- c(seq(10, 100, 10), seq(125, 500, 25), seq(550, 1000, 50), seq(1100, 2000, 100), seq(2200, 5000, 200), seq(5500, 10000, 500))
     model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     model_update_iterations <- as.numeric(na.omit(model_update_iterations))
     model_update_iterations <- unique(model_update_iterations[model_update_iterations > 1])

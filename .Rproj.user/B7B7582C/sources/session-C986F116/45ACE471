@@ -1,27 +1,27 @@
 {
-    "id": "04B94866",
-    "path": "~/GitHub/Glance_sampling/Rscript/test_active_learning.R",
-    "project_path": "Rscript/test_active_learning.R",
+    "id": "45ACE471",
+    "path": "~/GitHub/Glance_sampling/Rscript/estimate_targets.R",
+    "project_path": "Rscript/estimate_targets.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1663316390063.0,
+    "created": 1663333390642.0,
     "source_on_save": false,
-    "relative_order": 1,
+    "relative_order": 2,
     "properties": {
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "11,7",
-        "scrollLine": "0"
+        "cursorPosition": "50,31",
+        "scrollLine": "14"
     },
     "folds": "",
-    "lastKnownWriteTime": 1663140221,
+    "lastKnownWriteTime": 1663333601,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1663140221,
+    "last_content_update": 1663333601178,
     "read_only": false,
     "read_only_alternatives": []
 }
