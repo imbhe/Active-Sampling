@@ -172,7 +172,7 @@ active_learning <- function(data,
  
   # Initialise labelled and unlabelled datasets. ----
   grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) 
-  init <- initialise_grid(data, grid, use_logic)
+  init <- initialise_grid(data, grid)
   labelled <- init$labelled 
   unlabelled <- init$unlabelled 
 
@@ -185,36 +185,41 @@ active_learning <- function(data,
     if ( verbose ) { print(sprintf("Iteration %d", i)) }
     
     
-    # If use_logic = TRUE. ----
-    if ( use_logic & nrow(new_sample) > 0 ) {
+    # Logic. ---
+    
+    # Find all known crashes in unlabelled dataset.
+    ix <- find_crashes(new_sample, unlabelled)
+    
+    unlabelled %<>%
+      mutate(crash0 = ifelse(row_number() %in% ix$crashes0, 1, crash0),
+             crash1 = ifelse(row_number() %in% ix$crashes0, 1, crash1)) 
+    
+    # Find all known maximal impact speed crashes in unlabelled dataset.
+    ix <- find_max_impact_crashes(new_sample, labelled, unlabelled)
+    
+    unlabelled %<>%
+      mutate(max_impact0 = ifelse(row_number() %in% ix$max_impact_crashes0, 1, max_impact0),
+             max_impact1 = ifelse(row_number() %in% ix$max_impact_crashes1, 1, max_impact1),
+             sim_count0 = ifelse(row_number() %in% ix$max_impact_crashes0, 0, sim_count0),
+             sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
+    
+    # Find all known non-crashes in unlabelled dataset.
+    ix <- find_non_crashes(new_sample, unlabelled)
+    
+    unlabelled %<>% 
+      mutate(non_crash0 = ifelse(row_number() %in% ix$non_crashes0, 1, non_crash0),
+             non_crash1 = ifelse(row_number() %in% ix$non_crashes1, 1, non_crash1),
+             sim_count0 = ifelse(row_number() %in% ix$non_crashes0, 0, sim_count0),
+             sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) 
+    
+    # If use_logic (elimination) = TRUE. ----
+    if ( use_logic ) {
       
-      # Find all known non-crashes in unlabelled dataset.
-      ix <- find_non_crashes(new_sample, unlabelled)
-      
+      # Remove certainty non-crashes from unlabelled set.
       unlabelled %<>% 
-        mutate(non_crash0 = ifelse(row_number() %in% ix$non_crashes0, 1, non_crash0),
-               non_crash1 = ifelse(row_number() %in% ix$non_crashes1, 1, non_crash1),
-               sim_count0 = ifelse(row_number() %in% ix$non_crashes0, 0, sim_count0),
-               sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) %>%
-        filter(!(row_number() %in% ix$non_crashes0)) # Remove certainty non-crashes from unlabelled set.
+        filter(!(row_number() %in% ix$non_crashes0)) 
       
-      # Find all known crashes in unlabelled dataset.
-      ix <- find_crashes(new_sample, unlabelled)
-      
-      unlabelled %<>%
-        mutate(crash0 = ifelse(row_number() %in% ix$crashes0, 1, crash0),
-               crash1 = ifelse(row_number() %in% ix$crashes0, 1, crash1)) 
-      
-      # Find all known maximal impact speed crashes in unlabelled dataset.
-      ix <- find_max_impact_crashes(new_sample, labelled, unlabelled)
-      
-      unlabelled %<>%
-        mutate(max_impact0 = ifelse(row_number() %in% ix$max_impact_crashes0, 1, max_impact0),
-               max_impact1 = ifelse(row_number() %in% ix$max_impact_crashes1, 1, max_impact1),
-               sim_count0 = ifelse(row_number() %in% ix$max_impact_crashes0, 0, sim_count0),
-               sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
-      
-    } # End use_logic.
+    } 
     
     
     # Update predictions. ----
