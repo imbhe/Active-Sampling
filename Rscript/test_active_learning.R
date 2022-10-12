@@ -17,9 +17,9 @@ for (i in 1:1) {
                          target = "NA", 
                          use_logic = TRUE,
                          n_cases_per_iter = 5, 
-                         niter = 10, 
+                         niter = 50, 
                          verbose = TRUE, 
                          plot = TRUE, 
-                         nboot = 0)
+                         nboot = 100)
   toc()
 }

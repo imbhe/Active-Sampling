@@ -18,9 +18,8 @@
 #
 # target: target of optimisation, only used when sampling_method = "optimised".
 #
-# use_logic: Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
-#                              (no crash or maximal impact speed collision) and
-#                              avoid sampling in those regions.
+# use_logic:  Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
+#             (no crash or maximal impact speed collision) and avoid sampling in those regions.
 #
 # n_cases_per_iter: number of cases to sample from per iteration. 
 #
@@ -137,6 +136,7 @@ active_learning <- function(data,
   ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
   n_seq <- cumsum(rep(n_cases_per_iter, niter)) # Cumulative number of baseline scenario simulations. 
 
+
   # For optimised sampling:
   # Prediction models will be updated every when n_update observations have been collected.
   # Find corresponding iteration indices model_update_iterations.
@@ -175,6 +175,15 @@ active_learning <- function(data,
   init <- initialise_grid(data, grid)
   labelled <- init$labelled 
   unlabelled <- init$unlabelled 
+  
+  if ( use_logic | sampling_method == "optimised" ) {
+    labelled$sim_count0 <- 1
+    labelled$sim_count1 <- 1
+  }
+  if ( sampling_method == "importance sampling" & proposal_dist == "pps, size = prior weight * severity" ) {
+    labelled$sim_count0 <- 1
+  }
+  n_seq <- n_seq + sum(labelled$sim_count0) + sum(labelled$sim_count1)
 
   
   # Iterate. ----
@@ -298,28 +307,11 @@ active_learning <- function(data,
            bty = "l")
     }
     
-    
-    # Sample cases.
-    cases <- as.numeric(names(table(unlabelled$caseID)))
-    prob$case_probability[prob$case_probability >= (1 - 1e-3)] <- 1
-    if ( all(prob$case_probability == 1) ) {
-      new_cases <- cases
-    } else {
-      new_cases <- cases[which(UPmaxentropy(prob$case_probability) == 1)]
-    }
-    
-    
-    # Sample variations.
-    ix <- rep(0, nrow(unlabelled)) # Binary selection indicator.
-    for ( j in seq_along(new_cases) ) {
-      
-      jx <- which(unlabelled$caseID == new_cases[j]) 
-      ix[jx] <- as.numeric(rmultinom(n = 1, size = 1, prob = prob$sampling_probability[jx]))
-      
-    }
-    new_wt <- ix / prob$sampling_probability
-    new_wt[is.na(new_wt)] <- 0
-    
+ 
+    # Sample new instances
+    new_wt <- as.numeric(rmultinom(n = 1, size = n_cases_per_iter, prob = prob$sampling_probability)) / 
+      prob$sampling_probability
+
     
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
@@ -332,11 +324,12 @@ active_learning <- function(data,
     
     
     # Update labelled set.
+    bwt <- 1 / i # Batch weight is 1/i since all n_t are equal. 
     labelled <- labelled %>%
       mutate(old_weight = sampling_weight,
              new_weight = 0) %>% 
       add_row(new_sample) %>%
-      mutate(sampling_weight = old_weight + (new_weight - old_weight) / i) %>% # Update sampling weights. 
+      mutate(sampling_weight = old_weight + bwt * (new_weight - old_weight)) %>% # Update sampling weights. 
       dplyr::select(-old_weight, -new_weight) %>% 
       group_by(caseID, eoff, acc, eoff_acc_prob, iter, impact_speed0, impact_speed1, injury_risk0, injury_risk1, impact_speed_reduction, injury_risk_reduction) %>% 
       summarise_all(sum) %>% 
@@ -358,16 +351,20 @@ active_learning <- function(data,
       
       est <- boot$t0 # Estimates.
       se <- apply(boot$t, 2 , sd) # Standard error of estimates.
+      lower <- est - qnorm(0.975) * se # Confidence limits
+      upper <- est + qnorm(0.975) * se
       
     } else {
       
       est <- estimate_targets(crashes) # Returns NaN if crashes is empty set.
-      se <- rep(NA, length(est))
+      se <- lower <- upper <- rep(NA, length(est))
       
     }
     sqerr <- (est - ground_truth)^2 # Squared error with respect to ground truth.
+    cov <- as.numeric(lower < ground_truth & ground_truth < upper)
     names(se) <- paste0(names(est), "_se")
     names(sqerr) <- paste0(names(est), "_sqerr")
+    names(cov) <- paste0(names(est), "_ci_cover")
     
     # Prediction R-squares.
     r2_tbl <- as_tibble(r2)
@@ -386,16 +383,17 @@ active_learning <- function(data,
                      labelled_mean_injury_risk1 = sum(labelled$injury_risk1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
                      labelled_mean_crash_avoidance = sum(crashes$impact_speed1 == 0)*sum(crashes[crashes$impact_speed1 == 0,]$eoff_acc_prob)/
                        sum(crashes$impact_speed0 > 0)/sum(crashes[crashes$impact_speed0 > 0,]$eoff_acc_prob)) %>% # Meta-information.
-      add_column(iter = i, 
+      add_column(iter = i, # Iteration history.
                  neff0 = effective_number_simulations0, 
                  neff1 = effective_number_simulations1, 
                  neff_tot = effective_number_simulations0 + effective_number_simulations1,
                  nsim0 = actual_number_simulations0, 
                  nsim1 = actual_number_simulations1, 
-                 nsim_tot = actual_number_simulations0 + actual_number_simulations1) %>% # Iteration history.
+                 nsim_tot = actual_number_simulations0 + actual_number_simulations1) %>% 
       add_column(as_tibble(as.list(est))) %>% # Estimates.
       add_column(as_tibble(as.list(se)))  %>% # Standard errors.
       add_column(as_tibble(as.list(sqerr))) %>% # Squared errors.
+      add_column(as_tibble(as.list(cov))) %>% # Confidence interval coverage.
       add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
                                           ground_truth["impact_speed0_logSD"],
                                           est["impact_speed0_logmean"], 
