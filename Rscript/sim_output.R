@@ -57,6 +57,18 @@ sim_output <- function(df,input,inputparameter){
     aver$sd_crash_avoidance_rate_sqerr[p] = sqrt(var(res$crash_avoidance_rate_sqerr[index[p,]]))
     aver$sd_mean_injury_risk_reduction_sqerr[p] = sqrt(var(res$mean_injury_risk_reduction_sqerr[index[p,]]))
     
+    aver$mean_impact_speed_reduction_ci_cover[p] = sum(res$mean_impact_speed_reduction_ci_cover[index[p,]])/Sim_n
+    aver$crash_avoidance_rate_ci_cover[p] = sum(res$crash_avoidance_rate_ci_cover[index[p,]])/Sim_n
+    aver$mean_injury_risk_reduction_ci_cover[p] = sum(res$mean_injury_risk_reduction_ci_cover[index[p,]])/Sim_n
+    
+    
+    aver$accuracy_crash0[p] = mean(res$accuracy_crash0[index[p,]])
+    aver$accuracy_crash1[p] = mean(res$accuracy_crash1[index[p,]])
+    
+    aver$r2_impact_speed0[p] = mean(res$r2_impact_speed0[index[p,]])
+    aver$r2_impact_speed_reduction[p] = mean(res$r2_impact_speed_reduction[index[p,]])
+    #aver$r2_crash_avoidance_rate[p] = mean(res$r2_crash_avoidance_rate[index[p,]])
+    aver$r2_injury_risk_reduction[p] = mean(res$r2_injury_risk_reduction[index[p,]])
     
     biggest$group[p] = group
     biggest$use_logic[p] = use_logic
