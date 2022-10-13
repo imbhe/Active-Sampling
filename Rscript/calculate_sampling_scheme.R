@@ -51,10 +51,10 @@ calculate_sampling_scheme <- function(unlabelled,
   if ( n_cases < 1 ) {
     stop("Error in calculate_sampling_scheme. n_cases must be greater than or equal to 1.")
   }
-  if ( n_cases > length(unique(unlabelled$caseID)) ) {
-    stop(sprintf("Error in calculate_sampling_scheme. n_cases must be smaller than or equal to %d (number of cases in unlabelled dataset).", 
-                 length(unique(unlabelled$caseID))))
-  }
+  # if ( n_cases > length(unique(unlabelled$caseID)) ) {
+  #   stop(sprintf("Error in calculate_sampling_scheme. n_cases must be smaller than or equal to %d (number of cases in unlabelled dataset).", 
+  #                length(unique(unlabelled$caseID))))
+  # }
   
   
   # Calculate maximal impact speed per case. ----

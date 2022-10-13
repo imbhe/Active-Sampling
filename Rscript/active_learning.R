@@ -110,10 +110,10 @@ active_learning <- function(data,
   if ( n_cases_per_iter < 1 ) {
     stop("Error in active_learning. n_cases_per_iter must be greater than or equal to 1.")
   }
-  if ( n_cases_per_iter > length(unique(df$caseID)) ) {
-    stop(sprintf("Error in active_learning. n_cases_per_iter must be smaller than or equal to %d (number of cases in input dataset).", 
-                 length(unique(df$caseID))))
-  }
+  # if ( n_cases_per_iter > length(unique(df$caseID)) ) {
+  #   stop(sprintf("Error in active_learning. n_cases_per_iter must be smaller than or equal to %d (number of cases in input dataset).", 
+  #                length(unique(df$caseID))))
+  # }
   
   
   # Load helper functions. ----
