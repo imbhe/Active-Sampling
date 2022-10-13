@@ -1,27 +1,26 @@
 {
-    "id": "117D7956",
-    "path": "~/GitHub/Glance_sampling/Rscript/calculate_sampling_scheme.R",
-    "project_path": "Rscript/calculate_sampling_scheme.R",
+    "id": "087B0CAD",
+    "path": "~/GitHub/Glance_sampling/Rscript/find_max_impact_crashes.R",
+    "project_path": "Rscript/find_max_impact_crashes.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1663130203455.0,
+    "created": 1665550782383.0,
     "source_on_save": false,
     "relative_order": 4,
     "properties": {
-        "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "194,39",
-        "scrollLine": "171"
+        "cursorPosition": "4,44",
+        "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1663139994,
+    "lastKnownWriteTime": 1654259051,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1663139994884,
+    "last_content_update": 1654259051,
     "read_only": false,
     "read_only_alternatives": []
 }

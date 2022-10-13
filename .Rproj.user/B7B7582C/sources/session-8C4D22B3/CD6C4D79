@@ -1,27 +1,27 @@
 {
-    "id": "67422996",
-    "path": "~/GitHub/Glance_sampling/Rscript/test_active_learning.R",
-    "project_path": "Rscript/test_active_learning.R",
+    "id": "CD6C4D79",
+    "path": "~/GitHub/Glance_sampling/Rscript/calculate_sampling_scheme.R",
+    "project_path": "Rscript/calculate_sampling_scheme.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1663127909324.0,
+    "created": 1665551125776.0,
     "source_on_save": false,
-    "relative_order": 1,
+    "relative_order": 4,
     "properties": {
         "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "12,25",
-        "scrollLine": "0"
+        "cursorPosition": "215,2",
+        "scrollLine": "194"
     },
     "folds": "",
-    "lastKnownWriteTime": 1663139440,
+    "lastKnownWriteTime": 1665551241,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1663139440733,
+    "last_content_update": 1665551241195,
     "read_only": false,
     "read_only_alternatives": []
 }

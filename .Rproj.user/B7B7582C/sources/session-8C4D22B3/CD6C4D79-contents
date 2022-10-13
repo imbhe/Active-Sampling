@@ -202,43 +202,19 @@ calculate_sampling_scheme <- function(unlabelled,
       unlabelled$collision_prob0_pred <- 1
     } 
     size <- size * sqrt(unlabelled$collision_prob0_pred)
-    
+
     
     # Account for probability of deceleration-glance pair.
     #  + Smoothing: take 'average' (sqrt(x^2 + y^2)) of standardised 'size' in current and previous model update iteration. 
     size <- with(unlabelled, eoff_acc_prob * sqrt((size^2 / sum(size^2) + prev_size^2 / sum(prev_size^2))))
-        
+
   } 
   
   # Probability proportional to size.
   sampling_probability <- n_cases * size / sum(size)
   
   
-  # Adjustment to account for sampling of multiple cases per iteration. ----
-  case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)
-  
-  cases <- unique(unlabelled$caseID)
-  certainty_selection_cases <- NULL
-  while ( any(case_probability > 1) ) {
-    
-    ix <- as.numeric(names(which(case_probability > 1)))
-    certainty_selection_cases <- union(certainty_selection_cases, ix)
-    
-    for ( i in seq_along(ix) ) {
-      
-      jx <- which(unlabelled$caseID == ix[i])
-      sampling_probability[jx] <- sampling_probability[jx] / case_probability[paste(ix[i])]
-      
-    }
-    
-    jx <- which( !(unlabelled$caseID %in% certainty_selection_cases) )
-    sampling_probability[jx] <- (n_cases - length(certainty_selection_cases)) * size[jx] / sum(size[jx]) 
-    
-    case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)
-    
-  } 
-  
   # Return.
-  return(list(size = size, sampling_probability = sampling_probability, case_probability = case_probability))
+  return(list(size = size, sampling_probability = sampling_probability))
   
 }

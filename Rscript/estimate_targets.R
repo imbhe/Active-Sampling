@@ -14,6 +14,8 @@ estimate_targets <- function(data, weightvar = NULL) {
     mean_injury_risk1 <- with(crashes, sum(w * (injury_risk1)) / sum(w))
     mean_injury_risk_reduction <- mean_injury_risk0 - mean_injury_risk1
     percent_injury_risk_reduction <- 100 * mean_injury_risk1 / mean_injury_risk0
+    percent_crashes0 <- 100 * with(data %>% filter(w > 0), sum(w * (impact_speed0 > 0)) / sum(w))
+    percent_crashes1 <- 100 * with(data %>% filter(w > 0), sum(w * (impact_speed1 > 0)) / sum(w))
     crash_avoidance_rate <- 1 - with(crashes, sum(w * (impact_speed1 > 0)) / sum(w))
     
     impact_speed0_logmean <- with(crashes, sum(w * log(impact_speed0)) / sum(w))
@@ -29,8 +31,9 @@ estimate_targets <- function(data, weightvar = NULL) {
     mean_injury_risk1 <- NA
     mean_injury_risk_reduction <- mean_injury_risk0 - mean_injury_risk1
     percent_injury_risk_reduction <- 100 * mean_injury_risk1 / mean_injury_risk0
+    percent_crashes0 <- NA
+    percent_crashes1 <- NA
     crash_avoidance_rate <- NA
-    
     impact_speed0_logmean <- NA
     impact_speed0_logSD <- NA
     
@@ -44,6 +47,8 @@ estimate_targets <- function(data, weightvar = NULL) {
            "mean_injury_risk1" = mean_injury_risk1, 
            "mean_injury_risk_reduction" = mean_injury_risk_reduction, 
            "percent_injury_risk_reduction" = percent_injury_risk_reduction, 
+           "percent_crashes0" = percent_crashes0,
+           "percent_crashes1" = percent_crashes1,
            "crash_avoidance_rate" = crash_avoidance_rate, 
            "impact_speed0_logmean" = impact_speed0_logmean,
            "impact_speed0_logSD" = impact_speed0_logSD))

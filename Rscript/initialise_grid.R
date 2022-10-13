@@ -1,4 +1,4 @@
-initialise_grid <- function(data, grid, reduce_simulations_by_logic) {
+initialise_grid <- function(data, grid) {
   
   # Labelled dataset.
   labelled <- data %>% 
@@ -26,9 +26,8 @@ initialise_grid <- function(data, grid, reduce_simulations_by_logic) {
            max_impact0 = NA_integer_,
            max_impact1 = NA_integer_,
            sim_count0 = 1,
-           sim_count1 = 1,
-           sim_count1 = ifelse(impact_speed0 <= 0 & reduce_simulations_by_logic, 0, sim_count1),
-           size = NA,
+           sim_count1 = ifelse(impact_speed0 > 0, 1, 0),
+           size = eoff_acc_prob,
            iter = NA) 
   
   return(list(labelled = labelled, unlabelled = unlabelled))
