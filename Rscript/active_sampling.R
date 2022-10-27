@@ -25,7 +25,7 @@
 # use_logic:  Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
 #             (no crash or maximal impact speed collision) and avoid sampling in those regions.
 #
-# n_cases_per_iter: number of cases to sample from per iteration. 
+# batch_size: number of obserations to sample per iteration. 
 #
 # niter: number of iterations.
 #
@@ -62,7 +62,7 @@ active_sampling <- function(data,
                                            "+ prediction uncertainty", 
                                            "+ model uncertainty"),
                             use_logic = FALSE, # TRUE or FALSE. 
-                            n_cases_per_iter = 1,
+                            batch_size = 1,
                             niter = 500, 
                             nboot = 100, 
                             verbose = FALSE, # TRUE or FALSE.
@@ -129,10 +129,10 @@ active_sampling <- function(data,
     stop("Error in active_learning. sampling_method = optimised and target = NA not allowed.")
   }
   
-  # n_cases_per_iter should be integer between 1 and number of cases in input dataset.
-  n_cases_per_iter <- round(n_cases_per_iter)
-  if ( n_cases_per_iter < 1 ) {
-    stop("Error in active_learning. n_cases_per_iter must be greater than or equal to 1.")
+  # batch_size should be integer between 1 and number of cases in input dataset.
+  batch_size <- round(batch_size)
+  if ( batch_size < 1 ) {
+    stop("Error in active_learning. batch_size must be greater than or equal to 1.")
   }
 
   # Load helper functions. ----
@@ -151,7 +151,7 @@ active_sampling <- function(data,
   res <- NULL # To store results.
   n_cases <- length(unique(df$caseID)) # Number of cases in input dataset.
   ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
-  n_seq <- cumsum(rep(n_cases_per_iter, niter)) # Cumulative number of baseline scenario simulations. 
+  n_seq <- cumsum(rep(batch_size, niter)) # Cumulative number of baseline scenario simulations. 
 
 
   # For optimised sampling:
@@ -173,9 +173,9 @@ active_sampling <- function(data,
   
   
   # If bootstrap is used.
-  if ( nboot > 0 & niter * n_cases_per_iter >= 10) {
+  if ( nboot > 0 & niter * batch_size >= 10) {
     
-    n_update <- seq(10, niter * n_cases_per_iter, 10)
+    n_update <- seq(10, niter * batch_size, 10)
     boot_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     boot_update_iterations <- unique(as.numeric(na.omit(boot_update_iterations)))
     
@@ -340,8 +340,8 @@ active_sampling <- function(data,
     
  
     # Sample new instances
-    new_wt <- as.numeric(rmultinom(n = 1, size = n_cases_per_iter, prob = prob$sampling_probability)) / 
-      (n_cases_per_iter * prob$sampling_probability)
+    new_wt <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability)) / 
+      (batch_size * prob$sampling_probability)
 
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
@@ -404,7 +404,7 @@ active_sampling <- function(data,
                      target = target,
                      opt_method = opt_method,
                      use_logic = use_logic,
-                     n_cases_per_iter = n_cases_per_iter,
+                     batch_size = batch_size,
                      labelled_mean_impact_speed0 = sum(labelled$impact_speed0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
                      labelled_mean_impact_speed1 = sum(labelled$impact_speed1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
                      labelled_mean_injury_risk0 = sum(labelled$injury_risk0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
