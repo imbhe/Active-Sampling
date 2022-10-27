@@ -2,4 +2,4 @@
 .RData
 msg.txt
 tmp.RData
-Output/*.png
+~/Output/*.png
