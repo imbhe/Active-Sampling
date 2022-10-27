@@ -1,3 +1,118 @@
+
+impact_speed0_logmean <- with(crashes, sum(w * log(impact_speed0)) / sum(w))
+impact_speed0_logSD <- with(crashes, sqrt(sum(w * (log(impact_speed0) - impact_speed0_logmean)^2) / sum(w)))
+
+impact_speed0_logmean <- NA
+impact_speed0_logSD <- NA
+
+# "impact_speed0_logmean" = impact_speed0_logmean,
+# "impact_speed0_logSD" = impact_speed0_logSD
+
+rmse_log_xhat <- with(crashes, sd(log(impact_speed0) - log(impact_speed0_pred)))
+rmse_log_impact_speed0 = rmse_log_xhat
+sigma_log_impact_speed0 = pred$rmse_log_impact_speed0
+
+
+add_column(impact_speed0_KLdiv = KL(ground_truth["impact_speed0_logmean"], 
+                                    ground_truth["impact_speed0_logSD"],
+                                    est["impact_speed0_logmean"], 
+                                    est["impact_speed0_logSD"])) %>% # Kullback-Leibler divergence.
+  
+  
+  
+  
+  if ( target %in% c("crash avoidance", "all") ) {
+  
+  # If prediction accuracy is missing or negative: set all equal.
+  if ( is.na(r2$accuracy_crash1) | r2$accuracy_crash1 < 0 ) {  
+    unlabelled$collision_prob1_pred <- 1
+  } 
+  
+  rr <- 1 - est$crash_avoidance_rate
+  if ( modify_scheme == "naive" ) {
+    sigma2 <- 0
+  } else {
+    sigma2 <- with(unlabelled, collision_prob1_pred * (1 - collision_prob1_pred))
+  }
+  
+  size2 <- (unlabelled$collision_prob1_pred - rr)^2 + sigma2
+  size <- sqrt(size2)
+  size_mat[, 4] <- size
+  
+} 
+
+# Naive scheme: plug in predictions with no account for prediction uncertainty.
+if ( modify_scheme == "naive" ) {
+  unlabelled %<>%
+    mutate(sigma_log_impact_speed0 = 0,
+           sigma_impact_speed_reduction = 0,
+           sigma_injury_risk_reduction = 0,
+           sigma_collision1 = 0)
+}  
+
+if ( is.na(r2) | r2 < 0 ) { 
+  mu <- 0
+  pred <- 1
+  sigma <- 0
+} else { 
+  
+}
+
+if ( target %in% c("baseline impact speed distribution", "all") ) {
+  
+  # If prediction R-square is missing or negative: set all equal.
+  # Else: calculate Z-score.
+  if ( is.na(r2$impact_speed0) | r2$impact_speed0 < 0 ) { 
+    Z <- 1
+  } else { 
+    Z <- (log(unlabelled$impact_speed0_pred) - est$impact_speed0_logmean) / 
+      est$impact_speed0_logSD
+  }
+  
+  r <- rmse$log_impact_speed0 / est$impact_speed0_logSD
+  size <- sqrt(Z^2 + r^2 + 0.25 * (1 + 2 * Z^2 + Z^4 + 6 * Z^2 * r^2 + 3 * r^2))
+  size_mat[, 3] <- size
+  
+} 
+
+size_mat <- matrix(NA, nrow = nrow(unlabelled), ncol = 4) # Matrix to store results.
+
+# Check that all 'sizes' are valid.
+if ( target == "all" ) {
+  
+  for ( i in 1:ncol(size_mat) ) {
+    
+    size <- size_mat[, i]
+    
+    # If any invalid or no positive 'sizes' found -> set all equal. 
+    if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
+      size <- 1
+    }
+    size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
+    
+    size <- size^2 / sum(size^2) # Calculate squares and standardise.
+    size_mat[, i] <- size # Store.
+    
+  }
+  
+} else {
+  
+  # If any invalid or no positive 'sizes' found -> set all equal. 
+  if ( any(is.na(size)) || !any(size > 0) || any(is.infinite(size)) ) { 
+    size <- 1
+  }
+  size[size <= 0] <- min(size[size > 0]) # Zeroes and negative values not allowed.
+  
+}
+
+
+# If target = "all": use 'average' (root mean squared size).
+if ( target == "all" ) { 
+  size <- sqrt(rowMeans(size_mat)) 
+}
+
+
+
 # Adjustment to account for sampling of multiple cases per iteration. ----
 case_probability <- tapply(sampling_probability, unlabelled$caseID, sum)
 
