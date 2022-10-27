@@ -14,8 +14,8 @@ cat("\14")
 # target <- "impact speed reduction"
 # opt_method <- "naive"
 # use_logic <- FALSE
-# n_cases_per_iter <- 7
-# niter <- 50
+# batch_size <- 500
+# niter <- 5
 # verbose <- TRUE
 # plot <- TRUE
 # nboot <-  100
@@ -29,9 +29,9 @@ for (i in 1:1) {
                          proposal_dist = "NA",
                          target = "impact speed reduction", 
                          opt_method = "+ model uncertainty",
-                         use_logic = FALSE,
-                         batch_size = 3, 
-                         niter = 5, 
+                         use_logic = TRUE,
+                         batch_size = 500, 
+                         niter = 3, 
                          verbose = TRUE, 
                          plot = TRUE, 
                          nboot = 100)

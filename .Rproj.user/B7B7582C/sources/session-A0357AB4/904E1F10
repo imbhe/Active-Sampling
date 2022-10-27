@@ -1,27 +1,26 @@
 {
-    "id": "D192905D",
-    "path": "~/GitHub/Glance_sampling/Rscript/update_predictions.R",
-    "project_path": "Rscript/update_predictions.R",
+    "id": "904E1F10",
+    "path": "~/GitHub/Glance_sampling/Rscript/test_active_sampling.R",
+    "project_path": "Rscript/test_active_sampling.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1666855678135.0,
+    "created": 1666864594408.0,
     "source_on_save": false,
     "relative_order": 3,
     "properties": {
-        "tempName": "Untitled1",
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "353,0",
-        "scrollLine": "0"
+        "cursorPosition": "31,42",
+        "scrollLine": "13"
     },
     "folds": "",
-    "lastKnownWriteTime": 1666855321,
+    "lastKnownWriteTime": 1666872544,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1666855321,
+    "last_content_update": 1666872544197,
     "read_only": false,
     "read_only_alternatives": []
 }

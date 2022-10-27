@@ -1,26 +1,26 @@
 {
-    "id": "E2A84450",
-    "path": "~/GitHub/Glance_sampling/Rscript/test_active_sampling.R",
-    "project_path": "Rscript/test_active_sampling.R",
+    "id": "280AED8E",
+    "path": "C:/Users/imbergh/Box Sync/Forskning/Glance/Rscript/functions.R",
+    "project_path": null,
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1666855745068.0,
+    "created": 1666864547163.0,
     "source_on_save": false,
-    "relative_order": 4,
+    "relative_order": 2,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "32,41",
-        "scrollLine": "13"
+        "cursorPosition": "514,0",
+        "scrollLine": "501"
     },
     "folds": "",
-    "lastKnownWriteTime": 1666858577,
+    "lastKnownWriteTime": 1649933473,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1666858577457,
+    "last_content_update": 1649933473,
     "read_only": false,
     "read_only_alternatives": []
 }
