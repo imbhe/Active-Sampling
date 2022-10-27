@@ -194,15 +194,18 @@ active_sampling <- function(data,
     
     n_update <- seq(100, niter * batch_size, 100)
     plot_iter <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
-    plot_iter <- unique(as.numeric(na.omit(plot_iter)))
-    
-    if ( verbose ) {
+    plot_iter <- unique(as.numeric(na.omit(plot_iter)))  }
+  
+    else {plot_iter <- 0}
+  
+  if ( verbose ) {
       print(sprintf("Plotting predictions and sampling schemes at iteration %s", paste(plot_iter, collapse = ", ")))
       print(sprintf("after %s observations", paste(n_seq[plot_iter], collapse = ", ")))
       cat("\n")
     }  
+    
 
-  }
+
   
  
   # Initialise labelled and unlabelled datasets. ----

@@ -1,7 +1,7 @@
 # short explaination for the code 
-# n_cases_per_iter is limited by the real case number
+# batch_size is limited by the real case number
 library("readxl")
-source("Rscript/active_learning.R")
+source("Rscript/active_sampling.R")
 source("Rscript/sim_output.R")
 load("Data/glance_dec_data4.R")
 sampling_input <- read_excel("Data/Sampling_input.xlsx")
@@ -10,12 +10,12 @@ add_effn = 2000
 nburnin = 0
 verbose = FALSE
 
-total_iter = ceiling(add_effn/param_input$n_cases_per_iter)
+niter = ceiling(add_effn/param_input$batch_size)
 res_total= replicate(length(param_input$Sim_n), data.frame())
 
 for(j in 1:length(param_input$Sim_n)){
-  inputparameter <- data.frame(param_input$n_cases_per_iter[j],total_iter[j], nburnin,param_input$total_nboot[j],verbose,param_input$Sim_n[j])
-  colnames(inputparameter) <- c("n_cases_per_iter","total_iter", "nburnin","total_nboot","verbose","Sim_n")
+  inputparameter <- data.frame(param_input$batch_size[j],niter[j], nburnin,param_input$nboot[j],verbose,param_input$Sim_n[j])
+  colnames(inputparameter) <- c("batch_size","niter", "nburnin","nboot","verbose","Sim_n")
   res_top_loop = replicate(tail(sampling_input$sim_order, 1), data.frame())
   
   for(i in 1:tail(sampling_input$sim_order, 1)){
@@ -28,7 +28,7 @@ for(j in 1:length(param_input$Sim_n)){
   res_total[[j]] <- res_top_loop
 }  
 
-save(res_total, file = "Data/New_sim_results47.R")
+save(res_total, file = "Data/New_sim_results63.R")
 
 
 

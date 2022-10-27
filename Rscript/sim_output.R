@@ -1,26 +1,31 @@
 sim_output <- function(df,input,inputparameter){
-  total_iter = inputparameter$total_iter
-  n_cases_per_iter = inputparameter$n_cases_per_iter
+  niter = inputparameter$niter
+  batch_size = inputparameter$batch_size
   Sim_n = inputparameter$Sim_n
   target = input$target
   proposal_dist = input$proposal_dist
   sampling_method = input$sampling_method
   group = input$group
   use_logic = input$use_logic
+  opt_method = input$opt_method
   res_list <- replicate(Sim_n, data.frame())
   labelled_list <- replicate(Sim_n, data.frame())
   crashes_list<- replicate(Sim_n, data.frame())
+  verbose = inputparameter$verbose
+  nboot = inputparameter$nboot
+  
   for (k in 1:Sim_n){
-    print(paste("simulation",k,"start,","reduced logic is",input$use_logic,", number per iteration:",n_cases_per_iter,",total iteration:",total_iter))
+    print(paste("simulation",k,"start,","reduced logic is",input$use_logic,", number per iteration:",batch_size,",total iteration:",niter))
     set.seed(k)
-    out <- active_learning (df, sampling_method, 
+    out <- active_sampling (df, sampling_method, 
                             proposal_dist,
                             target, 
+                            opt_method,
                             use_logic, # TRUE or FALSE 
-                            n_cases_per_iter,
-                            total_iter,
-                            inputparameter$total_nboot,
-                            inputparameter$verbose,
+                            batch_size,
+                            niter,
+                            nboot,
+                            verbose,
                             plot = FALSE)
     #print(out$results$neff0)
     res_list[[k]] <- out$results
@@ -31,14 +36,14 @@ sim_output <- function(df,input,inputparameter){
   labelled = do.call(rbind, labelled_list)
   crashes = do.call(rbind, crashes_list)
   
-  aver = as.data.frame(matrix(nrow=total_iter,ncol=0))
-  biggest = as.data.frame(matrix(nrow=total_iter,ncol=0))
-  smallest = as.data.frame(matrix(nrow=total_iter,ncol=0))
-  index = matrix(nrow = total_iter,ncol = Sim_n)
-  for(p in 1:total_iter){
+  aver = as.data.frame(matrix(nrow=niter,ncol=0))
+  biggest = as.data.frame(matrix(nrow=niter,ncol=0))
+  smallest = as.data.frame(matrix(nrow=niter,ncol=0))
+  index = matrix(nrow = niter,ncol = Sim_n)
+  for(p in 1:niter){
     aver$group[p] = group
     aver$use_logic[p] = use_logic
-    index[p,] = seq(p,total_iter*Sim_n,total_iter)
+    index[p,] = seq(p,niter*Sim_n,niter)
     aver$neff0[p] = mean(res$neff0[index[p,]])
     aver$neff_tot[p] = mean(res$neff_tot[index[p,]])
     aver$nsim_tot[p] = mean(res$nsim_tot[index[p,]])
