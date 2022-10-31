@@ -42,6 +42,7 @@ sim_output <- function(df,input,inputparameter){
   index = matrix(nrow = niter,ncol = Sim_n)
   for(p in 1:niter){
     aver$group[p] = group
+    aver$opt_method[p] = opt_method
     aver$use_logic[p] = use_logic
     index[p,] = seq(p,niter*Sim_n,niter)
     aver$neff0[p] = mean(res$neff0[index[p,]])
