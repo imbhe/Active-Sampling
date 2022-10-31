@@ -89,7 +89,53 @@ active_sampling <- function(data,
     mutate(impact_speed_reduction = impact_speed0 - impact_speed1,
            injury_risk_reduction = injury_risk0 - injury_risk1) %>%  
     left_join(maximpact, by = "caseID")
-
+  
+  
+  # Plot baseline impact speed distribution. ----
+  
+  # 1D.
+  if (plot) {
+    ggplot(data %>% filter(caseID <= 42)) + # Plot 42 cases on 7x6 grid.
+      geom_point(aes(x = eoff, y = impact_speed0, colour = -acc)) +
+      scale_colour_continuous(type = "viridis") +
+      labs(x = "OEOFF (s)",
+           y = "Baseline impact speed (km/h)",
+           colour = bquote('Maximal deceleration '(km/s^2))) +
+      facet_wrap(~caseID, ncol = 7, nrow = 6, labeller = labeller(caseID = function(x) "")) + 
+      theme(panel.spacing = unit(0.1, "cm"), # Increase/decrease to increase/reduce horizontal white space between cases
+            strip.background = element_blank(),
+            strip.placement = "outside",
+            strip.text = element_text(size = 0), # Change size to increase/reduce vertical white space between cases. Set to element_blank() for no white space.
+            legend.direction = "horizontal",
+            legend.position = "top",
+            legend.key.height = unit(0.3, "cm"), # Change width and height as necessary.
+            legend.key.width = unit(2, "cm")) +
+      guides(colour = guide_colourbar(title.position = "top", title.hjust = 0.5))
+    
+    filename <- sprintf("Output/BaselinImpactSpeed_1D.png")
+    ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
+    
+    # 2D.
+    ggplot(data %>% filter(caseID <= 42)) + # Plot 42 cases on 7x6 grid.
+      geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = impact_speed0)) +
+      scale_fill_continuous(type = "viridis") +
+      labs(x = "OEOFF (s)",
+           y = bquote('Maximal deceleration '(km/s^2)),
+           fill = "Baseline impact speed (km/h)") +
+      facet_wrap(~caseID, ncol = 7, nrow = 6, labeller = labeller(caseID = function(x) "")) + 
+      theme(panel.spacing = unit(0.1, "cm"), # Increase/decrease to increase/reduce horizontal white space between cases
+            strip.background = element_blank(),
+            strip.placement = "outside",
+            strip.text = element_text(size = 0), # Change size to increase/reduce vertical white space between cases. Set to element_blank() for no white space.
+            legend.direction = "horizontal",
+            legend.position = "top",
+            legend.key.height = unit(0.3, "cm"), # Change width and height as necessary.
+            legend.key.width = unit(2, "cm")) +
+      guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
+    
+    filename <- sprintf("Output/BaselinImpactSpeed_2D.png")
+    ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
+  }
   
   # Check input parameters. ----
   sampling_method <- match.arg(sampling_method)
@@ -119,7 +165,7 @@ active_sampling <- function(data,
   if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
     stop("Error in active_learning. sampling_method = importance sampling and proposal_dist = NA not allowed.")
   }
-
+  
   # opt_method must be specified if sampling_method = "active sampling".
   if ( sampling_method == "active sampling" & opt_method == "NA" ) {
     stop("Error in active_learning. sampling_method = optimised and opt_method = NA not allowed.")
@@ -135,7 +181,7 @@ active_sampling <- function(data,
   if ( batch_size < 1 ) {
     stop("Error in active_learning. batch_size must be greater than or equal to 1.")
   }
-
+  
   # Load helper functions. ----
   source("Rscript/calculate_sampling_scheme.R")
   source("Rscript/estimate_targets.R")
@@ -153,18 +199,18 @@ active_sampling <- function(data,
   n_cases <- length(unique(df$caseID)) # Number of cases in input dataset.
   ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
   n_seq <- cumsum(rep(batch_size, niter)) # Cumulative number of baseline scenario simulations. 
-
-
+  
+  
   # For optimised sampling:
   # Prediction models will be updated every when n_update observations have been collected.
   # Find corresponding iteration indices model_update_iterations.
   if ( sampling_method == "active sampling" ) {
-
+    
     n_update <- c(seq(10, 100, 10), seq(125, 500, 25), seq(550, 1000, 50), seq(1100, 2000, 100), seq(2200, 5000, 200), seq(5500, 10000, 500))
     model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     model_update_iterations <- as.numeric(na.omit(model_update_iterations))
     model_update_iterations <- unique(model_update_iterations[model_update_iterations > 1])
-
+    
     if ( verbose ) {
       print(sprintf("Predictions updated at iterations %s", paste(model_update_iterations, collapse = ", ")))
       print(sprintf("after %s observations", paste(n_seq[model_update_iterations - 1], collapse = ", ")))
@@ -177,11 +223,11 @@ active_sampling <- function(data,
   # If bootstrap is used.
   if ( nboot > 0 & niter * batch_size >= 10) {
     
-    n_update <- seq(10, niter * batch_size, 10)
+    n_update <- seq(0, niter * batch_size, 10)[-1]
     boot_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     boot_update_iterations <- unique(as.numeric(na.omit(boot_update_iterations)))
     
-    if ( verbose ) {
+    if ( verbose & length(n_update) > 0 ) {
       print(sprintf("Bootstrap standard error updated at iterations %s", paste(boot_update_iterations, collapse = ", ")))
       print(sprintf("after %s observations", paste(n_seq[boot_update_iterations], collapse = ", ")))
       cat("\n")
@@ -190,39 +236,36 @@ active_sampling <- function(data,
   }
   
   # If plots should be produced.
+  plot_iter <- 0
   if ( plot ) {
     
-    n_update <- seq(100, niter * batch_size, 100)
+    n_update <- seq(0, niter * batch_size, 100)[-1]
     plot_iter <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
-    plot_iter <- unique(as.numeric(na.omit(plot_iter)))  }
-  
-    else {plot_iter <- 0}
-  
-  if ( verbose ) {
+    plot_iter <- unique(as.numeric(na.omit(plot_iter))) 
+    
+    if ( verbose & length(n_update) > 0 ) {
       print(sprintf("Plotting predictions and sampling schemes at iteration %s", paste(plot_iter, collapse = ", ")))
       print(sprintf("after %s observations", paste(n_seq[plot_iter], collapse = ", ")))
       cat("\n")
     }  
-    
-
-
+  } 
   
- 
+  
   # Initialise labelled and unlabelled datasets. ----
   grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) 
   init <- initialise_grid(data, grid)
   labelled <- init$labelled 
   unlabelled <- init$unlabelled 
-
+  
   if ( sampling_method == "active sampling" ) {
-
+    
     # Certainty selections.
     labelled %<>% 
       mutate(sim_count0 = 1,
              sim_count1 = 1,
              sampling_weight = 1, 
              final_weight = eoff_acc_prob * sampling_weight)
-
+    
     # Remove certainty selections from sampling frame.
     unlabelled %<>% 
       left_join(grid %>% mutate(init = 1), by = c("eoff", "acc")) %>% 
@@ -235,11 +278,11 @@ active_sampling <- function(data,
     
     # Number of simulations needed for initialisation.
     labelled$sim_count0 <- 1
-
+    
   }
   
   n_seq <- n_seq + sum(labelled$sim_count0)
-
+  
   
   # Iterate. ----
   new_sample <- labelled 
@@ -300,7 +343,7 @@ active_sampling <- function(data,
                  injury_risk_reduction = pred$r2_injury_risk_reduction,
                  accuracy_crash0 = pred$accuracy_crash0,
                  accuracy_crash1 = pred$accuracy_crash1)
-
+      
       # Add to unlabelled dataset.
       unlabelled %<>% 
         mutate(collision_prob0_pred = pred$collision_prob0,
@@ -316,7 +359,7 @@ active_sampling <- function(data,
     
     
     # Calculate sampling probabilities. ----
-
+    
     # Set R-squares to NA if sampling method is not equal to "active sampling" 
     # or if prediction models for optimised sampling has not (yet) been fitted.
     if ( sampling_method != "active sampling" | !exists("pred") ) {
@@ -350,13 +393,14 @@ active_sampling <- function(data,
       unlabelled$size <- prob$size
     }
     
-
+    
     if ( sampling_method == "active sampling" & plot & i %in% c(1, plot_iter) ) {
-     
+      
       unlabelled %>% 
+        mutate(sampling_probability = prob$sampling_probability)%>%
         filter(caseID <= 42) %>% # Plot 42 cases on 7x6 grid. 
         ggplot() +
-        geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = prob$sampling_probability)) +
+        geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = sampling_probability)) +        
         scale_fill_continuous(type = "viridis", trans = "log10", labels = scales::scientific_format(scale = 1)) +
         labs(x = "OEOFF (s)",
              y = bquote('Maximal deceleration '(km/s^2)),
@@ -379,9 +423,10 @@ active_sampling <- function(data,
       ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
       
       unlabelled %>% 
+        mutate(sampling_probability = prob$sampling_probability)%>%
         filter(caseID <= 42) %>% # Plot 42 cases on 7x6 grid. 
         ggplot() +
-        geom_point(aes(x = eoff, y = prob$sampling_probability, colour = -acc)) +
+        geom_point(aes(x = eoff, y = sampling_probability, colour = -acc)) +
         scale_colour_continuous(type = "viridis") +
         labs(x = "OEOFF (s)",
              y = "Sampling probability",
@@ -403,14 +448,13 @@ active_sampling <- function(data,
                           i)
       ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
       
-      
     }
     
- 
+    
     # Sample new instances
     new_wt <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability)) / 
       (batch_size * prob$sampling_probability)
-
+    
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
       mutate(old_weight = 0, 
@@ -419,7 +463,7 @@ active_sampling <- function(data,
       dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, old_weight, new_weight, iter) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
-   
+    
     # Update labelled set.
     bwt <- 1 / i # Batch weight is 1/i since all n_t are equal. 
     labelled %<>% 
@@ -432,7 +476,7 @@ active_sampling <- function(data,
       summarise_all(sum) %>% 
       mutate(final_weight = eoff_acc_prob * sampling_weight) %>% 
       ungroup() 
-  
+    
     # Estimate target quantities.
     crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
     effective_number_simulations0 <- effective_number_simulations1 <- n_seq[i]
@@ -465,7 +509,7 @@ active_sampling <- function(data,
     # Prediction R-squares.
     r2_tbl <- as_tibble(r2)
     names(r2_tbl) <- c("r2_impact_speed0", "r2_impact_speed_reduction", "r2_injury_risk_reduction", "accuracy_crash0", "accuracy_crash1")
-
+    
     # Append results.
     newres <- tibble(sampling_method = sampling_method, # Meta-information.
                      proposal_dist = proposal_dist,
@@ -485,13 +529,14 @@ active_sampling <- function(data,
                  neff_tot = effective_number_simulations0 + effective_number_simulations1,
                  nsim0 = actual_number_simulations0, 
                  nsim1 = actual_number_simulations1, 
-                 nsim_tot = actual_number_simulations0 + actual_number_simulations1) %>% 
+                 nsim_tot = actual_number_simulations0 + actual_number_simulations1,
+                 n_crashes = nrow(crashes)) %>% 
       add_column(as_tibble(as.list(est))) %>% # Estimates.
       add_column(as_tibble(as.list(se)))  %>% # Standard errors.
       add_column(as_tibble(as.list(sqerr))) %>% # Squared errors.
       add_column(as_tibble(as.list(cov))) %>% # Confidence interval coverage.
       add_column(r2_tbl) # Prediction R-squared and accuracy.
-
+    
     
     if ( is.null(res) ) {
       res <- newres

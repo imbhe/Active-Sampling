@@ -30,8 +30,8 @@ for (i in 1:1) {
                          target = "impact speed reduction", 
                          opt_method = "+ model uncertainty",
                          use_logic = TRUE,
-                         batch_size = 500, 
-                         niter = 3, 
+                         batch_size = 5, 
+                         niter = 5, 
                          verbose = TRUE, 
                          plot = TRUE, 
                          nboot = 100)
