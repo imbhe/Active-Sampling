@@ -1,26 +1,26 @@
 {
-    "id": "CD86D600",
-    "path": "~/GitHub/Glance_sampling/Rscript/active_sampling.R",
-    "project_path": "Rscript/active_sampling.R",
+    "id": "904E1F10",
+    "path": "~/GitHub/Glance_sampling/Rscript/test_active_sampling.R",
+    "project_path": "Rscript/test_active_sampling.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
     "dirty": false,
-    "created": 1666864441574.0,
+    "created": 1666864594408.0,
     "source_on_save": false,
-    "relative_order": 2,
+    "relative_order": 3,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "350,49",
-        "scrollLine": "360"
+        "cursorPosition": "33,34",
+        "scrollLine": "13"
     },
     "folds": "",
-    "lastKnownWriteTime": 1666872604,
+    "lastKnownWriteTime": 1667212498,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1666872604599,
+    "last_content_update": 1667212498715,
     "read_only": false,
     "read_only_alternatives": []
 }
