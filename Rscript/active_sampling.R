@@ -94,47 +94,48 @@ active_sampling <- function(data,
   # Plot baseline impact speed distribution. ----
   
   # 1D.
-  ggplot(data) +
-    geom_point(aes(x = eoff, y = impact_speed0, colour = -acc)) +
-    scale_colour_continuous(type = "viridis") +
-    labs(x = "OEOFF (s)",
-         y = "Baseline impact speed (km/h)",
-         colour = bquote('Maximal deceleration '(km/s^2))) +
-    facet_wrap(~caseID, ncol = 7, nrow = 6, labeller = labeller(caseID = function(x) "")) + 
-    theme(panel.spacing = unit(0.1, "cm"), # Increase/decrease to increase/reduce horizontal white space between cases
-          strip.background = element_blank(),
-          strip.placement = "outside",
-          strip.text = element_text(size = 0), # Change size to increase/reduce vertical white space between cases. Set to element_blank() for no white space.
-          legend.direction = "horizontal",
-          legend.position = "top",
-          legend.key.height = unit(0.3, "cm"), # Change width and height as necessary.
-          legend.key.width = unit(2, "cm")) +
-    guides(colour = guide_colourbar(title.position = "top", title.hjust = 0.5))
-  
-  filename <- sprintf("Output/BaselinImpactSpeed_1D.png")
-  ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
-  
-  # 2D.
-  ggplot(data) +
-    geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = impact_speed0)) +
-    scale_fill_continuous(type = "viridis") +
-    labs(x = "OEOFF (s)",
-         y = bquote('Maximal deceleration '(km/s^2)),
-         fill = "Baseline impact speed (km/h)") +
-    facet_wrap(~caseID, ncol = 7, nrow = 6, labeller = labeller(caseID = function(x) "")) + 
-    theme(panel.spacing = unit(0.1, "cm"), # Increase/decrease to increase/reduce horizontal white space between cases
-          strip.background = element_blank(),
-          strip.placement = "outside",
-          strip.text = element_text(size = 0), # Change size to increase/reduce vertical white space between cases. Set to element_blank() for no white space.
-          legend.direction = "horizontal",
-          legend.position = "top",
-          legend.key.height = unit(0.3, "cm"), # Change width and height as necessary.
-          legend.key.width = unit(2, "cm")) +
-    guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
-  
-  filename <- sprintf("Output/BaselinImpactSpeed_2D.png")
-  ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
-  
+  if (plot) {
+    ggplot(data %>% filter(caseID <= 42)) + # Plot 42 cases on 7x6 grid.
+      geom_point(aes(x = eoff, y = impact_speed0, colour = -acc)) +
+      scale_colour_continuous(type = "viridis") +
+      labs(x = "OEOFF (s)",
+           y = "Baseline impact speed (km/h)",
+           colour = bquote('Maximal deceleration '(km/s^2))) +
+      facet_wrap(~caseID, ncol = 7, nrow = 6, labeller = labeller(caseID = function(x) "")) + 
+      theme(panel.spacing = unit(0.1, "cm"), # Increase/decrease to increase/reduce horizontal white space between cases
+            strip.background = element_blank(),
+            strip.placement = "outside",
+            strip.text = element_text(size = 0), # Change size to increase/reduce vertical white space between cases. Set to element_blank() for no white space.
+            legend.direction = "horizontal",
+            legend.position = "top",
+            legend.key.height = unit(0.3, "cm"), # Change width and height as necessary.
+            legend.key.width = unit(2, "cm")) +
+      guides(colour = guide_colourbar(title.position = "top", title.hjust = 0.5))
+    
+    filename <- sprintf("Output/BaselinImpactSpeed_1D.png")
+    ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
+    
+    # 2D.
+    ggplot(data %>% filter(caseID <= 42)) + # Plot 42 cases on 7x6 grid.
+      geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = impact_speed0)) +
+      scale_fill_continuous(type = "viridis") +
+      labs(x = "OEOFF (s)",
+           y = bquote('Maximal deceleration '(km/s^2)),
+           fill = "Baseline impact speed (km/h)") +
+      facet_wrap(~caseID, ncol = 7, nrow = 6, labeller = labeller(caseID = function(x) "")) + 
+      theme(panel.spacing = unit(0.1, "cm"), # Increase/decrease to increase/reduce horizontal white space between cases
+            strip.background = element_blank(),
+            strip.placement = "outside",
+            strip.text = element_text(size = 0), # Change size to increase/reduce vertical white space between cases. Set to element_blank() for no white space.
+            legend.direction = "horizontal",
+            legend.position = "top",
+            legend.key.height = unit(0.3, "cm"), # Change width and height as necessary.
+            legend.key.width = unit(2, "cm")) +
+      guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
+    
+    filename <- sprintf("Output/BaselinImpactSpeed_2D.png")
+    ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
+  }
   
   # Check input parameters. ----
   sampling_method <- match.arg(sampling_method)
@@ -396,9 +397,10 @@ active_sampling <- function(data,
     if ( sampling_method == "active sampling" & plot & i %in% c(1, plot_iter) ) {
       
       unlabelled %>% 
+        mutate(sampling_probability = prob$sampling_probability)%>%
         filter(caseID <= 42) %>% # Plot 42 cases on 7x6 grid. 
         ggplot() +
-        geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = prob$sampling_probability)) +
+        geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = sampling_probability)) +        
         scale_fill_continuous(type = "viridis", trans = "log10", labels = scales::scientific_format(scale = 1)) +
         labs(x = "OEOFF (s)",
              y = bquote('Maximal deceleration '(km/s^2)),
@@ -421,9 +423,10 @@ active_sampling <- function(data,
       ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
       
       unlabelled %>% 
+        mutate(sampling_probability = prob$sampling_probability)%>%
         filter(caseID <= 42) %>% # Plot 42 cases on 7x6 grid. 
         ggplot() +
-        geom_point(aes(x = eoff, y = prob$sampling_probability, colour = -acc)) +
+        geom_point(aes(x = eoff, y = sampling_probability, colour = -acc)) +
         scale_colour_continuous(type = "viridis") +
         labs(x = "OEOFF (s)",
              y = "Sampling probability",
