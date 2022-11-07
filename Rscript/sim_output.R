@@ -43,6 +43,7 @@ sim_output <- function(df,input,inputparameter){
   for(p in 1:niter){
     aver$group[p] = group
     aver$opt_method[p] = opt_method
+    aver$n_crashes[p] = (mean(res$n_crashes[index[p,]]))
     aver$use_logic[p] = use_logic
     index[p,] = seq(p,niter*Sim_n,niter)
     aver$neff0[p] = mean(res$neff0[index[p,]])
