@@ -22,6 +22,8 @@
 #             for finding optimal sampling scheme. 
 #             Only used when sampling_method = "active sampling".
 #
+# paper: Alters a few options that are specific for the "stats" and "applied" paper. 
+#
 # use_logic:  Use logical constraints (TRUE or FALSE) to infer regions with certainty outcomes 
 #             (no crash or maximal impact speed collision) and avoid sampling in those regions.
 #
@@ -61,6 +63,7 @@ active_sampling <- function(data,
                                            "naive", 
                                            "+ prediction uncertainty", 
                                            "+ model uncertainty"),
+                            paper = c("stats", "applied"),
                             use_logic = FALSE, # TRUE or FALSE. 
                             batch_size = 1,
                             niter = 500, 
@@ -78,7 +81,7 @@ active_sampling <- function(data,
   require("tidyverse")
   
   
-  # Calculate variables. ----
+  # Calculate some variables. ----
   maximpact <- data %>% 
     group_by(caseID) %>% 
     summarise(impact_speed_max0 = max(impact_speed0, na.rm = TRUE), .groups = "keep") %>% 
@@ -142,6 +145,7 @@ active_sampling <- function(data,
   proposal_dist <- match.arg(proposal_dist)
   target <- match.arg(target)
   opt_method <- match.arg(opt_method)
+  paper <- match.arg(paper)
   
   # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
   if ( sampling_method != "importance sampling" & proposal_dist != "NA") { 
@@ -175,7 +179,7 @@ active_sampling <- function(data,
   if ( sampling_method == "active sampling" & target == "NA" ) {
     stop("Error in active_learning. sampling_method = optimised and target = NA not allowed.")
   }
-  
+ 
   # batch_size should be integer between 1 and number of cases in input dataset.
   batch_size <- round(batch_size)
   if ( batch_size < 1 ) {
@@ -204,7 +208,7 @@ active_sampling <- function(data,
   # For optimised sampling:
   # Prediction models will be updated every when n_update observations have been collected.
   # Find corresponding iteration indices model_update_iterations.
-  if ( sampling_method == "active sampling" ) {
+  if ( sampling_method == "active sampling" & niter * batch_size >= 10 ) {
     
     n_update <- c(seq(10, 100, 10), seq(125, 500, 25), seq(550, 1000, 50), seq(1100, 2000, 100), seq(2200, 5000, 200), seq(5500, 10000, 500))
     model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, 0) > n_update[ix] & c(0, n_seq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
@@ -217,6 +221,8 @@ active_sampling <- function(data,
       cat("\n")
     }
     
+  } else {
+    model_update_iterations <- NA
   }
   
   
@@ -231,12 +237,14 @@ active_sampling <- function(data,
       print(sprintf("Bootstrap standard error updated at iterations %s", paste(boot_update_iterations, collapse = ", ")))
       print(sprintf("after %s observations", paste(n_seq[boot_update_iterations], collapse = ", ")))
       cat("\n")
-    }
-    
+    } 
+  } else {
+    boot_update_iterations <- NA
   }
   
+
   # If plots should be produced.
-  plot_iter <- 0
+  plot_iter <- NA
   if ( plot ) {
     
     n_update <- seq(0, niter * batch_size, 100)[-1]
@@ -249,7 +257,8 @@ active_sampling <- function(data,
       cat("\n")
     }  
   } 
-  
+  plot_iter <- ifelse(length(plot_iter) == 0, NA, plot_iter) # Make sure not empty.
+
   
   # Initialise labelled and unlabelled datasets. ----
   grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) 
@@ -257,7 +266,10 @@ active_sampling <- function(data,
   labelled <- init$labelled 
   unlabelled <- init$unlabelled 
   
-  if ( sampling_method == "active sampling" ) {
+  if ( sampling_method == "active sampling" | 
+       (paper == "stats" 
+        & sampling_method == "importance sampling" 
+        & proposal_dist == "severity sampling") ) {
     
     # Certainty selections.
     labelled %<>% 
@@ -272,16 +284,17 @@ active_sampling <- function(data,
       filter(is.na(init)) %>% 
       dplyr::select(-init)
     
-  } 
-  
-  if ( sampling_method == "importance sampling" & proposal_dist == "severity sampling" ) {
+  } else if ( use_logic == TRUE | 
+              (sampling_method == "importance sampling" & 
+              proposal_dist == "severity sampling") ) {
     
     # Number of simulations needed for initialisation.
     labelled$sim_count0 <- 1
     
   }
-  
-  n_seq <- n_seq + sum(labelled$sim_count0)
+
+  n_seq0 <- n_seq + sum(labelled$sim_count0)
+  n_seq1 <- n_seq + sum(labelled$sim_count1)
   
   
   # Iterate. ----
@@ -319,6 +332,7 @@ active_sampling <- function(data,
              sim_count0 = ifelse(row_number() %in% ix$non_crashes0, 0, sim_count0),
              sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) 
     
+    
     # If use_logic (elimination) = TRUE. ----
     if ( use_logic ) {
       
@@ -335,7 +349,7 @@ active_sampling <- function(data,
       if ( verbose ) { print("Update predictions.") }
       
       # Calculated predictions.
-      pred <- update_predictions(labelled, unlabelled, target, plot = plot & i %in% plot_iter, iter = i) 
+      pred <- update_predictions(labelled, unlabelled, target, use_logic, plot = plot & i %in% plot_iter, iter = i) 
       
       # Prediction R-squares and accuracies.
       r2 <- list(impact_speed0 = pred$r2_impact_speed0,
@@ -394,6 +408,7 @@ active_sampling <- function(data,
     }
     
     
+    # Plot. ----
     if ( sampling_method == "active sampling" & plot & i %in% c(1, plot_iter) ) {
       
       unlabelled %>% 
@@ -451,9 +466,12 @@ active_sampling <- function(data,
     }
     
     
-    # Sample new instances
+    # Sample new instances. ----
+    
+    # Sample from multinomial distribution.
     new_wt <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability)) / 
       (batch_size * prob$sampling_probability)
+    
     
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
@@ -463,6 +481,7 @@ active_sampling <- function(data,
       dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, old_weight, new_weight, iter) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
+    
     
     # Update labelled set.
     bwt <- 1 / i # Batch weight is 1/i since all n_t are equal. 
@@ -477,9 +496,12 @@ active_sampling <- function(data,
       mutate(final_weight = eoff_acc_prob * sampling_weight) %>% 
       ungroup() 
     
-    # Estimate target quantities.
+    
+    # Estimate target quantities ----
+    
     crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
-    effective_number_simulations0 <- effective_number_simulations1 <- n_seq[i]
+    effective_number_simulations0 <- n_seq0[i]
+    effective_number_simulations1 <- n_seq1[i]
     actual_number_simulations0 <- sum(labelled$sim_count0)
     actual_number_simulations1 <- sum(labelled$sim_count1)
     
@@ -491,7 +513,7 @@ active_sampling <- function(data,
       
       est <- boot$t0 # Estimates.
       se <- apply(boot$t, 2 , sd) # Standard error of estimates.
-      lower <- est - qnorm(0.975) * se # Confidence limits
+      lower <- est - qnorm(0.975) * se # Confidence limits.
       upper <- est + qnorm(0.975) * se
       
     } else {
@@ -510,7 +532,8 @@ active_sampling <- function(data,
     r2_tbl <- as_tibble(r2)
     names(r2_tbl) <- c("r2_impact_speed0", "r2_impact_speed_reduction", "r2_injury_risk_reduction", "accuracy_crash0", "accuracy_crash1")
     
-    # Append results.
+    
+    # Append results. ----
     newres <- tibble(sampling_method = sampling_method, # Meta-information.
                      proposal_dist = proposal_dist,
                      target = target,

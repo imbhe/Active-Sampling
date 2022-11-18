@@ -112,7 +112,7 @@ update_predictions <- function(labelled,
     # Train random forest.  
     options(warn = -1)
     grid <- regGrid[sample(1:nrow(regGrid), 3), ]
-    rf <- safe_caret_train(impact_speed_reduction ~ eoff + acc + impact_speed0_pred, 
+    rf <- safe_caret_train(impact_speed_reduction ~ eoff + acc + impact_speed_max0, 
                            data = crashes,
                            method = "ranger",
                            num.trees = 100,
@@ -155,7 +155,7 @@ update_predictions <- function(labelled,
     # Train random forest.  
     options(warn = -1)
     grid <- regGrid[sample(1:nrow(regGrid), 3), ]
-    rf <- safe_caret_train(injury_risk_reduction ~ eoff + acc + impact_speed0_pred, 
+    rf <- safe_caret_train(injury_risk_reduction ~ eoff + acc + impact_speed_max0, 
                            data = crashes,
                            method = "ranger",
                            num.trees = 100,
@@ -199,7 +199,7 @@ update_predictions <- function(labelled,
     # Train random forest.  
     options(warn = -1)
     grid <- classGrid[sample(1:nrow(classGrid), 3), ]
-    rf <- safe_caret_train(factor(impact_speed1 > 0, labels = paste0("Y", 0:1)) ~ eoff + acc + impact_speed0_pred, 
+    rf <- safe_caret_train(factor(impact_speed1 > 0, labels = paste0("Y", 0:1)) ~ eoff + acc + impact_speed_max0, 
                            data = crashes,
                            method = "ranger",
                            num.trees = 100,

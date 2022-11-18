@@ -28,12 +28,13 @@ for (i in 1:1) {
                          sampling_method = "active sampling", 
                          proposal_dist = "NA",
                          target = "impact speed reduction", 
-                         opt_method = "+ model uncertainty",
-                         use_logic = TRUE,
+                         opt_method = "naive",
+                         use_logic = FALSE,
+                         paper = "stats",
                          batch_size = 5, 
-                         niter = 5, 
+                         niter = 1, 
                          verbose = TRUE, 
-                         plot = TRUE, 
+                         plot = FALSE, 
                          nboot = 100)
   toc()
 }
