@@ -3,8 +3,8 @@ initialise_grid <- function(data, grid) {
   # Labelled dataset.
   labelled <- data %>% 
     right_join(grid, by = c("eoff", "acc")) %>%
-    mutate(sim_count0 = 1, 
-           sim_count1 = 1, 
+    mutate(sim_count0 = 0, 
+           sim_count1 = 0, 
            sampling_weight = 0, 
            final_weight = 0,
            iter = 0) 
