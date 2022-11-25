@@ -1,4 +1,3 @@
-
 rm(list = ls())
 library("tictoc")
 load("Data/glance_dec_data_test.R")
@@ -25,16 +24,16 @@ for (i in 1:1) {
   tic()
   print(sprintf("%d", i))
   res <- active_sampling(df, 
-                         sampling_method = "active sampling", 
-                         proposal_dist = "NA",
-                         target = "impact speed reduction", 
-                         opt_method = "naive",
+                         sampling_method = "importance sampling", 
+                         proposal_dist = "density sampling",
+                         target = "NA", 
+                         opt_method = "NA",
                          use_logic = FALSE,
                          paper = "stats",
-                         batch_size = 5, 
-                         niter = 1, 
+                         batch_size = 100, 
+                         niter = 5, 
                          verbose = TRUE, 
                          plot = FALSE, 
-                         nboot = 100)
+                         nboot = 0)
   toc()
 }

@@ -149,41 +149,41 @@ active_sampling <- function(data,
   
   # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
   if ( sampling_method != "importance sampling" & proposal_dist != "NA") { 
-    stop(sprintf("Error in active_learning. sampling_method = %s and proposal_dist = %s not allowed.", 
+    stop(sprintf('Sampling_method = "%s" and proposal_dist = "%s" not allowed.', 
                  sampling_method, proposal_dist))
   } 
   
   # target should be "NA" when sampling_method not equal to "active sampling".
   if ( sampling_method != "active sampling" & target != "NA") { 
-    stop(sprintf("Error in active_learning. sampling_method = %s and target = %s not allowed.", 
+    stop(sprintf('Sampling_method = "%s" and target = "%s" not allowed.', 
                  sampling_method, target))
   } 
   
   # opt_method should be "NA" when sampling_method not equal to "active sampling".
   if ( sampling_method != "active sampling" & opt_method != "NA") { 
-    stop(sprintf("Error in active_learning. sampling_method = %s and opt_method = %s not allowed.", 
+    stop(sprintf('Sampling_method = "%s" and opt_method = "%s" not allowed.', 
                  sampling_method, opt_method))
   } 
   
   # proposal_dist must be specified if sampling_method = "importance sampling".
   if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
-    stop("Error in active_learning. sampling_method = importance sampling and proposal_dist = NA not allowed.")
+    stop('Sampling_method = "importance sampling" and proposal_dist = "NA" not allowed.')
   }
   
   # opt_method must be specified if sampling_method = "active sampling".
   if ( sampling_method == "active sampling" & opt_method == "NA" ) {
-    stop("Error in active_learning. sampling_method = optimised and opt_method = NA not allowed.")
+    stop('Sampling_method = "optimised" and opt_method = "NA" not allowed.')
   }
   
   # target must be specified if sampling_method = "active sampling".
   if ( sampling_method == "active sampling" & target == "NA" ) {
-    stop("Error in active_learning. sampling_method = optimised and target = NA not allowed.")
+    stop('Sampling_method = "optimised"" and target = "NA" not allowed.')
   }
  
   # batch_size should be integer between 1 and number of cases in input dataset.
   batch_size <- round(batch_size)
   if ( batch_size < 1 ) {
-    stop("Error in active_learning. batch_size must be greater than or equal to 1.")
+    stop("Batch_size must be greater than or equal to 1.")
   }
   
   # Load helper functions. ----
@@ -203,10 +203,10 @@ active_sampling <- function(data,
   n_cases <- length(unique(df$caseID)) # Number of cases in input dataset.
   ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
   n_seq <- cumsum(rep(batch_size, niter)) # Cumulative number of baseline scenario simulations. 
-  
+
   
   # For optimised sampling:
-  # Prediction models will be updated every when n_update observations have been collected.
+  # Prediction models will be updated n_update observations have been collected.
   # Find corresponding iteration indices model_update_iterations.
   if ( sampling_method == "active sampling" & niter * batch_size >= 10 ) {
     
@@ -226,7 +226,7 @@ active_sampling <- function(data,
   }
   
   
-  # If bootstrap is used.
+  # If bootstrap is used: run every 10th new observation. Find corresponding iterations.
   if ( nboot > 0 & niter * batch_size >= 10) {
     
     n_update <- seq(0, niter * batch_size, 10)[-1]
@@ -292,7 +292,7 @@ active_sampling <- function(data,
     labelled$sim_count0 <- 1
     
   }
-
+  
   n_seq0 <- n_seq + sum(labelled$sim_count0)
   n_seq1 <- n_seq + sum(labelled$sim_count1)
   
@@ -469,35 +469,43 @@ active_sampling <- function(data,
     # Sample new instances. ----
     
     # Sample from multinomial distribution.
-    new_wt <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability)) / 
-      (batch_size * prob$sampling_probability)
+    n_hits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
     
-    
+    # Calculate weights.
+    bwt <- batch_size / n_seq[i] # Batch weight.
+    wt <- bwt * n_hits / (batch_size * prob$sampling_probability) # Observation weight.
+
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
-      mutate(old_weight = 0, 
-             new_weight = new_wt) %>% 
-      filter(new_weight > 0) %>% 
-      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, old_weight, new_weight, iter) %>% 
+      mutate(n_hits = n_hits,
+             sampling_weight = wt) %>% 
+      filter(sampling_weight > 0) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, sampling_weight, n_hits, iter) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
+  
+    # If an element is selected multiple times: split into multiple observations.
+    # Only counts as one simulation.
+    ix <- rep(1:nrow(new_sample), new_sample$n_hits) # To repeat rows. 
+    reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0. 
+    
+    new_sample <- new_sample[ix, ] %>% 
+      mutate(sampling_weight = sampling_weight / n_hits,
+             sim_count0 = ifelse(row_number() %in% reps, 0, sim_count0), 
+             sim_count1 = ifelse(row_number() %in% reps, 0, sim_count1)) %>% 
+      dplyr::select(-n_hits)
     
     
-    # Update labelled set.
-    bwt <- 1 / i # Batch weight is 1/i since all n_t are equal. 
+    # Update labelled set. ----
+    
+    rewt <- c(n_seq[1], n_seq)[i] / n_seq[i] # Re-weight sampling weights by this n_1 + ... n_{k-1} / (n_1 + ... + n_k).
     labelled %<>% 
-      mutate(old_weight = sampling_weight,
-             new_weight = ifelse(sampling_weight == 1, 1, 0)) %>% # Sampling weights set to 1 for certainty selection in initialisation step.
+      mutate(sampling_weight = ifelse(sampling_weight == 1, 1, sampling_weight * rewt)) %>%
       add_row(new_sample) %>% # Add new sample.
-      mutate(sampling_weight = old_weight + bwt * (new_weight - old_weight)) %>% # Update sampling weights. 
-      dplyr::select(-old_weight, -new_weight) %>% 
-      group_by(caseID, eoff, acc, eoff_acc_prob, impact_speed0, impact_speed1, injury_risk0, injury_risk1, impact_speed_reduction, injury_risk_reduction, impact_speed_max0) %>% 
-      summarise_all(sum) %>% 
-      mutate(final_weight = eoff_acc_prob * sampling_weight) %>% 
-      ungroup() 
+      mutate(final_weight = eoff_acc_prob * sampling_weight) 
+ 
     
-    
-    # Estimate target quantities ----
+    # Estimate target quantities. ----
     
     crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
     effective_number_simulations0 <- n_seq0[i]
@@ -509,7 +517,7 @@ active_sampling <- function(data,
       
       boot <- boot(crashes, 
                    statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
-                   R = ifelse(nboot > 0 && i %in% boot_update_iterations, nboot, 0) ) # Run bootstrap every 10th sample.
+                   R = ifelse(nboot > 0 && i %in% boot_update_iterations, nboot, 0) ) # Run bootstrap at selected iterations (every 10th new observation).
       
       est <- boot$t0 # Estimates.
       se <- apply(boot$t, 2 , sd) # Standard error of estimates.
