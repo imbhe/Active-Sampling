@@ -1,3 +1,5 @@
+
+
 ################################################################################
 #
 # active_sampling.R
@@ -180,7 +182,7 @@ active_sampling <- function(data,
   if ( sampling_method == "active sampling" & target == "NA" ) {
     stop('Sampling_method = "optimised"" and target = "NA" not allowed.')
   }
- 
+  
   # batch_size should be integer between 1 and number of cases in input dataset.
   batch_size <- round(batch_size)
   if ( batch_size < 1 ) {
@@ -247,7 +249,7 @@ active_sampling <- function(data,
     boot_update_iterations <- NA
   }
   
-
+  
   # If plots should be produced.
   plot_iter <- NA
   if ( plot ) {
@@ -263,7 +265,7 @@ active_sampling <- function(data,
     }  
   } 
   plot_iter <- ifelse(length(plot_iter) == 0, NA, plot_iter) # Make sure not empty.
-
+  
   
   # Initialise labelled and unlabelled datasets. ----
   grid <- tibble(eoff = max(data$eoff), acc = max(data$acc)) 
@@ -281,10 +283,10 @@ active_sampling <- function(data,
     labelled %<>% 
       mutate(sim_count0 = 1,
              sim_count1 = 1)
- 
+    
   } else if ( use_logic == TRUE | 
               (sampling_method == "importance sampling" & 
-              proposal_dist == "severity sampling") ) {
+               proposal_dist == "severity sampling") ) {
     
     # Number of simulations needed for initialisation.
     labelled$sim_count0 <- 1
@@ -293,7 +295,7 @@ active_sampling <- function(data,
   
   n_seq0 <- n_seq + sum(labelled$sim_count0)
   n_seq1 <- n_seq + sum(labelled$sim_count1)
-
+  
   
   # Iterate. ----
   new_sample <- labelled 
@@ -481,31 +483,31 @@ active_sampling <- function(data,
       dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, batch_weight, pi, mu, n_hits, sampling_weight) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
-
+    
     # Update labelled set.
     labelled %<>% 
       mutate(batch_weight = batch_size / n_seq[i]) %>% # Update batch-weights.
       add_row(new_sample) %>% # Add new sample.
       mutate(final_weight = eoff_acc_prob * batch_weight * sampling_weight) 
- 
+    
     
     # Estimate target quantities. ----
     
     bwt <- batch_size / n_seq[i] # Batch weight in current iteration.
     bwts <- diff(c(0, n_seq[1:i])) / n_seq[i] # All batch weights.
     rewt <- c(n_seq[1], n_seq)[i] / n_seq[i] # Re-weight old batch weights by n_1 + ... n_{k-1} / (n_1 + ... + n_k).
-
+    
     # Estimate totals in current iteration.
     totals[i, ] <- estimate_totals(new_sample %>% 
-                                  mutate(final_weight = eoff_acc_prob * sampling_weight), 
-                                "final_weight")
+                                     mutate(final_weight = eoff_acc_prob * sampling_weight), 
+                                   "final_weight")
     
     # Pooled estimate of totals.
     t_y <- rewt * t_y + bwt * totals[i, ]
-
+    
     # Pooled estimate of "means among relevant instances".
     est <- estimate_targets(labelled, "final_weight")
-
+    
     
     # Variance estimation using martingale method. ----
     X <- t(t(totals[1:i,, drop = FALSE]) - t_y)
@@ -518,7 +520,7 @@ active_sampling <- function(data,
     
     se_mart <- sqrt(diag(t(G) %*% cov %*% G))
     
-    if ( all(se_mart == 0) ) { # Zero at first iteration. Set to NA. 
+    if ( all(se_mart == 0) | any(is.na(se_mart))) { # Zero at first iteration. Set to NA. 
       se_mart <- rep(NA, 3)
     }
     
@@ -540,10 +542,10 @@ active_sampling <- function(data,
                 byrow = FALSE, nrow = 4, ncol = 3)
     
     se_classic <- sqrt(diag(t(G) %*% covest_classic %*% G))
-  
+    
     
     # Variance estimation using bootstrap method. ----
-   
+    
     # If an element is selected multiple times: split into multiple observations.
     # Only counts as one simulation.
     ix <- rep(1:nrow(labelled), labelled$n_hits) # To repeat rows.
@@ -552,7 +554,7 @@ active_sampling <- function(data,
       mutate(sampling_weight = 1 / mu, 
              final_weight = eoff_acc_prob * sampling_weight) %>% 
       filter(impact_speed0 > 0 & final_weight > 0)
-
+    
     # If any crashes have been generated.
     # Run bootstrap at selected iterations (every 10th new observation).
     if ( nrow(crashes) > 0 & i %in% boot_update_iterations ) { 
@@ -563,7 +565,7 @@ active_sampling <- function(data,
     } else {
       se_boot <- rep(NA, length(est))
     }
-
+    
     # Confidence intervals.
     lower_mart <- est - qnorm(0.975) * se_mart 
     upper_mart <- est + qnorm(0.975) * se_mart
@@ -577,7 +579,7 @@ active_sampling <- function(data,
     cov_classic <- as.numeric(lower_classic < ground_truth & ground_truth < upper_classic)
     cov_boot <- as.numeric(lower_boot < ground_truth & ground_truth < upper_boot)
     
- 
+    
     # Append results. ----
     
     # Squared error from ground truth. 
@@ -635,3 +637,4 @@ active_sampling <- function(data,
               crashes = labelled %>% filter(impact_speed0 > 0)))
   
 }
+
