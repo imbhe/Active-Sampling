@@ -590,9 +590,9 @@ active_sampling <- function(data,
     names(se_mart) <- paste0(names(est), "_se_mart")
     names(se_classic) <- paste0(names(est), "_se_classic")
     names(se_boot) <- paste0(names(est), "_se_boot")
-    names(cov_mart) <- paste0(names(est), "_ci_mart_cover")
-    names(cov_classic) <- paste0(names(est), "_ci_classic_cover")
-    names(cov_boot) <- paste0(names(est), "_ci_boot_cover")
+    names(cov_mart) <- paste0(names(est), "_ci_cover_mart")
+    names(cov_classic) <- paste0(names(est), "_ci_cover_classic")
+    names(cov_boot) <- paste0(names(est), "_ci_cover_boot")
     names(sqerr) <- paste0(names(est), "_sqerr")
     names(r2_tbl) <- c("r2_impact_speed0", "r2_impact_speed_reduction", "r2_injury_risk_reduction", "accuracy_crash0", "accuracy_crash1")
     
