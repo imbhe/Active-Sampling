@@ -21,6 +21,7 @@ sim_output <- function(df,input,inputparameter){
                             proposal_dist,
                             target, 
                             opt_method,
+                            paper = c("stats"),
                             use_logic, # TRUE or FALSE 
                             batch_size,
                             niter,
@@ -59,14 +60,34 @@ sim_output <- function(df,input,inputparameter){
     aver$impact_speed0_KLdiv_sqerr[p] = sqrt(mean(res$impact_speed0_KLdiv[index[p,]]))
     aver$impact_speed0_KLdiv[p] = mean(res$impact_speed0_KLdiv[index[p,]])
     
-    aver$sd_mean_impact_speed0_sqerr[p] = sqrt(var(res$mean_impact_speed0_sqerr[index[p,]]))
-    aver$sd_mean_impact_speed_reduction_sqerr[p] = sqrt(var(res$mean_impact_speed_reduction_sqerr[index[p,]]))
-    aver$sd_crash_avoidance_rate_sqerr[p] = sqrt(var(res$crash_avoidance_rate_sqerr[index[p,]]))
-    aver$sd_mean_injury_risk_reduction_sqerr[p] = sqrt(var(res$mean_injury_risk_reduction_sqerr[index[p,]]))
+    aver$mean_impact_speed0_se_boot[p] = mean(res$mean_impact_speed0_se_boot[index[p,]])
+    aver$mean_impact_speed_reduction_se_boot[p] = mean(res$mean_impact_speed_reduction_se_boot[index[p,]])
+    aver$crash_avoidance_rate_se_boot[p] = mean(res$crash_avoidance_rate_se_boot[index[p,]])
+    aver$mean_injury_risk_reduction_se_boot[p] = mean(res$mean_injury_risk_reduction_se_boot[index[p,]])
     
-    aver$mean_impact_speed_reduction_ci_cover[p] = sum(res$mean_impact_speed_reduction_ci_cover[index[p,]])/Sim_n
-    aver$crash_avoidance_rate_ci_cover[p] = sum(res$crash_avoidance_rate_ci_cover[index[p,]])/Sim_n
-    aver$mean_injury_risk_reduction_ci_cover[p] = sum(res$mean_injury_risk_reduction_ci_cover[index[p,]])/Sim_n
+    aver$mean_impact_speed0_se_classic[p] = mean(res$mean_impact_speed0_se_classic[index[p,]])
+    aver$mean_impact_speed_reduction_se_classic[p] = mean(res$mean_impact_speed_reduction_se_classic[index[p,]])
+    aver$crash_avoidance_rate_se_classic[p] = mean(res$crash_avoidance_rate_se_classic[index[p,]])
+    aver$mean_injury_risk_reduction_se_classic[p] = mean(res$mean_injury_risk_reduction_se_classic[index[p,]])
+    
+    aver$mean_impact_speed0_se_mart[p] = mean(res$mean_impact_speed0_se_mart[index[p,]])
+    aver$mean_impact_speed_reduction_se_mart[p] = mean(res$mean_impact_speed_reduction_se_mart[index[p,]])
+    aver$crash_avoidance_rate_se_mart[p] = mean(res$crash_avoidance_rate_se_mart[index[p,]])
+    aver$mean_injury_risk_reduction_se_mart[p] = mean(res$mean_injury_risk_reduction_se_mart[index[p,]])
+    
+    
+    aver$mean_impact_speed_reduction_ci_cover_boot[p] = sum(res$mean_impact_speed_reduction_ci_cover_boot[index[p,]])/Sim_n
+    aver$crash_avoidance_rate_ci_cover_boot[p] = sum(res$crash_avoidance_rate_ci_cover_boot[index[p,]])/Sim_n
+    aver$mean_injury_risk_reduction_ci_cover_boot[p] = sum(res$mean_injury_risk_reduction_ci_cover_boot[index[p,]])/Sim_n
+    
+    aver$mean_impact_speed_reduction_ci_cover_classic[p] = sum(res$mean_impact_speed_reduction_ci_cover_classic[index[p,]])/Sim_n
+    aver$crash_avoidance_rate_ci_cover_classic[p] = sum(res$crash_avoidance_rate_ci_cover_classic[index[p,]])/Sim_n
+    aver$mean_injury_risk_reduction_ci_cover_classic[p] = sum(res$mean_injury_risk_reduction_ci_cover_classic[index[p,]])/Sim_n
+    
+    aver$mean_impact_speed_reduction_ci_cover_mart[p] = sum(res$mean_impact_speed_reduction_ci_cover_mart[index[p,]])/Sim_n
+    aver$crash_avoidance_rate_ci_cover_mart[p] = sum(res$crash_avoidance_rate_ci_cover_mart[index[p,]])/Sim_n
+    aver$mean_injury_risk_reduction_ci_cover_mart[p] = sum(res$mean_injury_risk_reduction_ci_cover_mart[index[p,]])/Sim_n
+    
     
     
     aver$accuracy_crash0[p] = mean(res$accuracy_crash0[index[p,]])
@@ -74,9 +95,10 @@ sim_output <- function(df,input,inputparameter){
     
     aver$r2_impact_speed0[p] = mean(res$r2_impact_speed0[index[p,]])
     aver$r2_impact_speed_reduction[p] = mean(res$r2_impact_speed_reduction[index[p,]])
-    #aver$r2_crash_avoidance_rate[p] = mean(res$r2_crash_avoidance_rate[index[p,]])
+    aver$r2_crash_avoidance_rate[p] = mean(res$r2_crash_avoidance_rate[index[p,]])
     aver$r2_injury_risk_reduction[p] = mean(res$r2_injury_risk_reduction[index[p,]])
     
+    #######
     biggest$group[p] = group
     biggest$use_logic[p] = use_logic
     biggest$iter[p] = mean(res$iter[p])
