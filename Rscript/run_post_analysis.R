@@ -3,10 +3,10 @@
 library("readxl")
 source("Rscript/active_sampling.R")
 source("Rscript/sim_output.R")
-load("Data/glance_dec_data4.R")
-sampling_input <- read_excel("Data/Sampling_input_maths1.xlsx")
+load("Data/glance_dec_data_ttc_AEB_1_25_ttc.R")
+sampling_input <- read_excel("Data/Sampling_input_maths_coverage2.xlsx")
 param_input <- read_excel("Data/param_input.xlsx")
-add_effn = 2000
+add_effn = 300
 nburnin = 0
 verbose = FALSE
 
@@ -28,7 +28,5 @@ for(j in 1:length(param_input$Sim_n)){
   res_total[[j]] <- res_top_loop
 }  
 
-save(res_total, file = "Data/New_sim_results82.R")
-
-
+save(res_total, file = "Data/New_sim_results122.R")
 
