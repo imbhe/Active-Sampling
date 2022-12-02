@@ -90,7 +90,8 @@ active_sampling <- function(data,
   
   data %<>% 
     mutate(impact_speed_reduction = impact_speed0 - impact_speed1,
-           injury_risk_reduction = injury_risk0 - injury_risk1) %>%  
+           injury_risk_reduction = injury_risk0 - injury_risk1,
+           crash_avoidance = as.numeric( (impact_speed0 > 0) * (impact_speed1 == 0)) ) %>%  
     left_join(maximpact, by = "caseID")
   
   
@@ -189,6 +190,7 @@ active_sampling <- function(data,
   # Load helper functions. ----
   source("Rscript/calculate_sampling_scheme.R")
   source("Rscript/estimate_targets.R")
+  source("Rscript/estimate_totals.R")
   source("Rscript/find_crashes.R")
   source("Rscript/find_max_impact_crashes.R")
   source("Rscript/find_non_crashes.R")
@@ -203,7 +205,10 @@ active_sampling <- function(data,
   n_cases <- length(unique(df$caseID)) # Number of cases in input dataset.
   ground_truth <- estimate_targets(data, weightvar = "eoff_acc_prob") # Calculate target quantities on full data.
   n_seq <- cumsum(rep(batch_size, niter)) # Cumulative number of baseline scenario simulations. 
-
+  totals <- matrix(0, nrow = niter, ncol = 4)  # To store estimates of totals per iteration.
+  t_y <- rep(0, 4) # To store pooled estimates of totals.
+  covest_classic <- matrix(0, nrow = 4, ncol = 4) # To store covariance matrix estimates per iteration.
+  
   
   # For optimised sampling:
   # Prediction models will be updated n_update observations have been collected.
@@ -266,6 +271,7 @@ active_sampling <- function(data,
   labelled <- init$labelled 
   unlabelled <- init$unlabelled 
   
+  # Update simulation counts.
   if ( sampling_method == "active sampling" | 
        (paper == "stats" 
         & sampling_method == "importance sampling" 
@@ -274,16 +280,8 @@ active_sampling <- function(data,
     # Certainty selections.
     labelled %<>% 
       mutate(sim_count0 = 1,
-             sim_count1 = 1,
-             sampling_weight = 1, 
-             final_weight = eoff_acc_prob * sampling_weight)
-    
-    # Remove certainty selections from sampling frame.
-    unlabelled %<>% 
-      left_join(grid %>% mutate(init = 1), by = c("eoff", "acc")) %>% 
-      filter(is.na(init)) %>% 
-      dplyr::select(-init)
-    
+             sim_count1 = 1)
+ 
   } else if ( use_logic == TRUE | 
               (sampling_method == "importance sampling" & 
               proposal_dist == "severity sampling") ) {
@@ -295,7 +293,7 @@ active_sampling <- function(data,
   
   n_seq0 <- n_seq + sum(labelled$sim_count0)
   n_seq1 <- n_seq + sum(labelled$sim_count1)
-  
+
   
   # Iterate. ----
   new_sample <- labelled 
@@ -305,42 +303,43 @@ active_sampling <- function(data,
     if ( verbose ) { print(sprintf("Iteration %d", i)) }
     
     
-    # Logic. ---
-    
-    # Find all known crashes in unlabelled dataset.
-    ix <- find_crashes(new_sample, unlabelled)
-    
-    unlabelled %<>%
-      mutate(crash0 = ifelse(row_number() %in% ix$crashes0, 1, crash0),
-             crash1 = ifelse(row_number() %in% ix$crashes0, 1, crash1)) 
-    
-    # Find all known maximal impact speed crashes in unlabelled dataset.
-    ix <- find_max_impact_crashes(new_sample, labelled, unlabelled)
-    
-    unlabelled %<>%
-      mutate(max_impact0 = ifelse(row_number() %in% ix$max_impact_crashes0, 1, max_impact0),
-             max_impact1 = ifelse(row_number() %in% ix$max_impact_crashes1, 1, max_impact1),
-             sim_count0 = ifelse(row_number() %in% ix$max_impact_crashes0, 0, sim_count0),
-             sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
-    
-    # Find all known non-crashes in unlabelled dataset.
-    ix <- find_non_crashes(new_sample, unlabelled)
-    
-    unlabelled %<>% 
-      mutate(non_crash0 = ifelse(row_number() %in% ix$non_crashes0, 1, non_crash0),
-             non_crash1 = ifelse(row_number() %in% ix$non_crashes1, 1, non_crash1),
-             sim_count0 = ifelse(row_number() %in% ix$non_crashes0, 0, sim_count0),
-             sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) 
-    
-    
-    # If use_logic (elimination) = TRUE. ----
-    if ( use_logic ) {
+    # Logic (only for applied paper). ---
+    if ( paper == "applied" ) {
+      # Find all known crashes in unlabelled dataset.
+      ix <- find_crashes(new_sample, unlabelled)
       
-      # Remove certainty non-crashes from unlabelled set.
+      unlabelled %<>%
+        mutate(crash0 = ifelse(row_number() %in% ix$crashes0, 1, crash0),
+               crash1 = ifelse(row_number() %in% ix$crashes0, 1, crash1)) 
+      
+      # Find all known maximal impact speed crashes in unlabelled dataset.
+      ix <- find_max_impact_crashes(new_sample, labelled, unlabelled)
+      
+      unlabelled %<>%
+        mutate(max_impact0 = ifelse(row_number() %in% ix$max_impact_crashes0, 1, max_impact0),
+               max_impact1 = ifelse(row_number() %in% ix$max_impact_crashes1, 1, max_impact1),
+               sim_count0 = ifelse(row_number() %in% ix$max_impact_crashes0, 0, sim_count0),
+               sim_count1 = ifelse(row_number() %in% ix$max_impact_crashes1, 0, sim_count1)) 
+      
+      # Find all known non-crashes in unlabelled dataset.
+      ix <- find_non_crashes(new_sample, unlabelled)
+      
       unlabelled %<>% 
-        filter(!(row_number() %in% ix$non_crashes0)) 
+        mutate(non_crash0 = ifelse(row_number() %in% ix$non_crashes0, 1, non_crash0),
+               non_crash1 = ifelse(row_number() %in% ix$non_crashes1, 1, non_crash1),
+               sim_count0 = ifelse(row_number() %in% ix$non_crashes0, 0, sim_count0),
+               sim_count1 = ifelse(row_number() %in% ix$non_crashes1, 0, sim_count1)) 
       
-    } 
+      
+      # If use_logic (elimination) = TRUE. ----
+      if ( use_logic ) {
+        
+        # Remove certainty non-crashes from unlabelled set.
+        unlabelled %<>% 
+          filter(!(row_number() %in% ix$non_crashes0)) 
+        
+      }   
+    }
     
     
     # Update predictions. ----
@@ -387,8 +386,7 @@ active_sampling <- function(data,
     
     # Sets estimates to NA if target quantities have not (yet) been estimated.
     if ( !exists("est") ) {
-      est <- estimate_targets(labelled, weightvar = "eoff_acc_prob")
-      est[1:length(est)] <- NA
+      est <- estimate_targets(labelled)
     }
     
     # Calculate sampling scheme.
@@ -471,101 +469,155 @@ active_sampling <- function(data,
     # Sample from multinomial distribution.
     n_hits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
     
-    # Calculate weights.
-    bwt <- batch_size / n_seq[i] # Batch weight.
-    wt <- bwt * n_hits / (batch_size * prob$sampling_probability) # Observation weight.
-
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
-      mutate(n_hits = n_hits,
-             sampling_weight = wt) %>% 
-      filter(sampling_weight > 0) %>% 
-      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, sampling_weight, n_hits, iter) %>% 
+      mutate(batch_size = batch_size,
+             pi = prob$sampling_probability,
+             mu = batch_size * pi,
+             n_hits = n_hits,
+             sampling_weight = n_hits / mu, 
+             batch_weight = batch_size / n_seq[i]) %>% 
+      filter(n_hits > 0) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, batch_weight, pi, mu, n_hits, sampling_weight) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
-  
-    # If an element is selected multiple times: split into multiple observations.
-    # Only counts as one simulation.
-    ix <- rep(1:nrow(new_sample), new_sample$n_hits) # To repeat rows. 
-    reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0. 
-    
-    new_sample <- new_sample[ix, ] %>% 
-      mutate(sampling_weight = sampling_weight / n_hits,
-             sim_count0 = ifelse(row_number() %in% reps, 0, sim_count0), 
-             sim_count1 = ifelse(row_number() %in% reps, 0, sim_count1)) %>% 
-      dplyr::select(-n_hits)
-    
-    
-    # Update labelled set. ----
-    
-    rewt <- c(n_seq[1], n_seq)[i] / n_seq[i] # Re-weight sampling weights by this n_1 + ... n_{k-1} / (n_1 + ... + n_k).
+
+    # Update labelled set.
     labelled %<>% 
-      mutate(sampling_weight = ifelse(sampling_weight == 1, 1, sampling_weight * rewt)) %>%
+      mutate(batch_weight = batch_size / n_seq[i]) %>% # Update batch-weights.
       add_row(new_sample) %>% # Add new sample.
-      mutate(final_weight = eoff_acc_prob * sampling_weight) 
+      mutate(final_weight = eoff_acc_prob * batch_weight * sampling_weight) 
  
     
     # Estimate target quantities. ----
     
-    crashes <- labelled %>% filter(impact_speed0 > 0 & final_weight > 0)
-    effective_number_simulations0 <- n_seq0[i]
-    effective_number_simulations1 <- n_seq1[i]
-    actual_number_simulations0 <- sum(labelled$sim_count0)
-    actual_number_simulations1 <- sum(labelled$sim_count1)
+    bwt <- batch_size / n_seq[i] # Batch weight in current iteration.
+    bwts <- diff(c(0, n_seq[1:i])) / n_seq[i] # All batch weights.
+    rewt <- c(n_seq[1], n_seq)[i] / n_seq[i] # Re-weight old batch weights by n_1 + ... n_{k-1} / (n_1 + ... + n_k).
+
+    # Estimate totals in current iteration.
+    totals[i, ] <- estimate_totals(new_sample %>% 
+                                  mutate(final_weight = eoff_acc_prob * sampling_weight), 
+                                "final_weight")
     
-    if ( nrow(crashes) > 0 ) { # If any crashes have been generated.
-      
+    # Pooled estimate of totals.
+    t_y <- rewt * t_y + bwt * totals[i, ]
+
+    # Pooled estimate of "means among relevant instances".
+    est <- estimate_targets(labelled, "final_weight")
+
+    
+    # Variance estimation using martingale method. ----
+    X <- t(t(totals[1:i,, drop = FALSE]) - t_y)
+    cov <- t(X) %*% diag(bwts^2) %*% X
+    
+    G <- matrix(data = c(1 / t_y[4], 0, 0,-t_y[1] / t_y[4]^2,
+                         0, 1 / t_y[4], 0,-t_y[2] / t_y[4]^2,
+                         0, 0, 1 / t_y[4],-t_y[3] / t_y[4]^2), 
+                byrow = FALSE, nrow = 4, ncol = 3)
+    
+    se_mart <- sqrt(diag(t(G) %*% cov %*% G))
+    
+    if ( all(se_mart == 0) ) { # Zero at first iteration. Set to NA. 
+      se_mart <- rep(NA, 3)
+    }
+    
+    
+    # Variance estimation using classical survey sampling method (Hansen-Hurwitz estimator). ----
+    Y <- new_sample %>% 
+      mutate(baseline_crash = impact_speed0 > 0) %>% 
+      dplyr::select(impact_speed_reduction, injury_risk_reduction, crash_avoidance, baseline_crash) %>%
+      as.matrix()
+    X <- t((t(Y / new_sample$pi) - t_y)) / batch_size
+    n <- batch_size
+    
+    covest_classic <- rewt^2 * covest_classic + 
+      bwt^2 * n / (n - 1) * t(X) %*% diag(new_sample$n_hits * new_sample$eoff_acc_prob^2) %*% X
+    
+    G <- matrix(data = c(1 / t_y[4], 0, 0,-t_y[1] / t_y[4]^2,
+                         0, 1 / t_y[4], 0,-t_y[2] / t_y[4]^2,
+                         0, 0, 1 / t_y[4],-t_y[3] / t_y[4]^2), 
+                byrow = FALSE, nrow = 4, ncol = 3)
+    
+    se_classic <- sqrt(diag(t(G) %*% covest_classic %*% G))
+  
+    
+    # Variance estimation using bootstrap method. ----
+   
+    # If an element is selected multiple times: split into multiple observations.
+    # Only counts as one simulation.
+    ix <- rep(1:nrow(labelled), labelled$n_hits) # To repeat rows.
+    reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0.
+    crashes <- labelled[ix, ] %>%
+      mutate(sampling_weight = 1 / mu, 
+             final_weight = eoff_acc_prob * sampling_weight) %>% 
+      filter(impact_speed0 > 0 & final_weight > 0)
+
+    # If any crashes have been generated.
+    # Run bootstrap at selected iterations (every 10th new observation).
+    if ( nrow(crashes) > 0 & i %in% boot_update_iterations ) { 
       boot <- boot(crashes, 
                    statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
-                   R = ifelse(nboot > 0 && i %in% boot_update_iterations, nboot, 0) ) # Run bootstrap at selected iterations (every 10th new observation).
-      
-      est <- boot$t0 # Estimates.
-      se <- apply(boot$t, 2 , sd) # Standard error of estimates.
-      lower <- est - qnorm(0.975) * se # Confidence limits.
-      upper <- est + qnorm(0.975) * se
-      
+                   R = nboot) 
+      se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
     } else {
-      
-      est <- estimate_targets(crashes) # Returns NaN if crashes is empty set.
-      se <- lower <- upper <- rep(NA, length(est))
-      
+      se_boot <- rep(NA, length(est))
     }
-    sqerr <- (est - ground_truth)^2 # Squared error with respect to ground truth.
-    cov <- as.numeric(lower < ground_truth & ground_truth < upper)
-    names(se) <- paste0(names(est), "_se")
-    names(sqerr) <- paste0(names(est), "_sqerr")
-    names(cov) <- paste0(names(est), "_ci_cover")
+
+    # Confidence intervals.
+    lower_mart <- est - qnorm(0.975) * se_mart 
+    upper_mart <- est + qnorm(0.975) * se_mart
+    lower_classic <- est - qnorm(0.975) * se_classic 
+    upper_classic <- est + qnorm(0.975) * se_classic
+    lower_boot <- est - qnorm(0.975) * se_boot 
+    upper_boot <- est + qnorm(0.975) * se_boot
+    
+    # Confidence intervals cover true value?
+    cov_mart <- as.numeric(lower_mart < ground_truth & ground_truth < upper_mart)
+    cov_classic <- as.numeric(lower_classic < ground_truth & ground_truth < upper_classic)
+    cov_boot <- as.numeric(lower_boot < ground_truth & ground_truth < upper_boot)
+    
+ 
+    # Append results. ----
+    
+    # Squared error from ground truth. 
+    sqerr <- (est - ground_truth)^2 
     
     # Prediction R-squares.
     r2_tbl <- as_tibble(r2)
+    
+    # Add names.
+    names(se_mart) <- paste0(names(est), "_se_mart")
+    names(se_classic) <- paste0(names(est), "_se_classic")
+    names(se_boot) <- paste0(names(est), "_se_boot")
+    names(cov_mart) <- paste0(names(est), "_ci_mart_cover")
+    names(cov_classic) <- paste0(names(est), "_ci_classic_cover")
+    names(cov_boot) <- paste0(names(est), "_ci_boot_cover")
+    names(sqerr) <- paste0(names(est), "_sqerr")
     names(r2_tbl) <- c("r2_impact_speed0", "r2_impact_speed_reduction", "r2_injury_risk_reduction", "accuracy_crash0", "accuracy_crash1")
     
-    
-    # Append results. ----
     newres <- tibble(sampling_method = sampling_method, # Meta-information.
                      proposal_dist = proposal_dist,
                      target = target,
                      opt_method = opt_method,
                      use_logic = use_logic,
-                     batch_size = batch_size,
-                     labelled_mean_impact_speed0 = sum(labelled$impact_speed0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
-                     labelled_mean_impact_speed1 = sum(labelled$impact_speed1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
-                     labelled_mean_injury_risk0 = sum(labelled$injury_risk0*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
-                     labelled_mean_injury_risk1 = sum(labelled$injury_risk1*labelled$eoff_acc_prob)/sum(labelled$eoff_acc_prob),
-                     labelled_mean_crash_avoidance = sum(crashes$impact_speed1 == 0)*sum(crashes[crashes$impact_speed1 == 0,]$eoff_acc_prob)/
-                       sum(crashes$impact_speed0 > 0)/sum(crashes[crashes$impact_speed0 > 0,]$eoff_acc_prob)) %>% 
+                     batch_size = batch_size) %>% 
       add_column(iter = i, # Iteration history.
-                 neff0 = effective_number_simulations0, 
-                 neff1 = effective_number_simulations1, 
-                 neff_tot = effective_number_simulations0 + effective_number_simulations1,
-                 nsim0 = actual_number_simulations0, 
-                 nsim1 = actual_number_simulations1, 
-                 nsim_tot = actual_number_simulations0 + actual_number_simulations1,
+                 neff0 = n_seq0[i], 
+                 neff1 = n_seq1[i], 
+                 neff_tot = n_seq0[i] + n_seq1[i],
+                 nsim0 = sum(labelled$sim_count0), 
+                 nsim1 = sum(labelled$sim_count1), 
+                 nsim_tot = sum(labelled$sim_count0) + sum(labelled$sim_count1),
                  n_crashes = nrow(crashes)) %>% 
       add_column(as_tibble(as.list(est))) %>% # Estimates.
-      add_column(as_tibble(as.list(se)))  %>% # Standard errors.
       add_column(as_tibble(as.list(sqerr))) %>% # Squared errors.
-      add_column(as_tibble(as.list(cov))) %>% # Confidence interval coverage.
+      add_column(as_tibble(as.list(se_mart)))  %>% # Standard errors.
+      add_column(as_tibble(as.list(se_classic)))  %>% 
+      add_column(as_tibble(as.list(se_boot)))  %>% 
+      add_column(as_tibble(as.list(cov_mart))) %>% # Confidence interval coverage.
+      add_column(as_tibble(as.list(cov_classic))) %>% 
+      add_column(as_tibble(as.list(cov_boot))) %>% 
       add_column(r2_tbl) # Prediction R-squared and accuracy.
     
     

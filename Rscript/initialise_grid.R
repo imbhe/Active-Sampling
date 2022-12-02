@@ -5,9 +5,15 @@ initialise_grid <- function(data, grid) {
     right_join(grid, by = c("eoff", "acc")) %>%
     mutate(sim_count0 = 0, 
            sim_count1 = 0, 
-           sampling_weight = 0, 
-           final_weight = 0,
-           iter = 0) 
+           iter = 0,
+           batch_size = 0,
+           batch_weight = 1,
+           pi = 0,
+           mu = 0,
+           n_hits = 0,
+           sampling_weight = 0,
+           final_weight = 0)
+  
   
   # Unlabelled dataset.
   n <- nrow(data)
@@ -19,7 +25,6 @@ initialise_grid <- function(data, grid) {
            injury_risk_reduction_pred = NA_real_,
            sigma_impact_speed_reduction = NA_real_,
            sigma_injury_risk_reduction = NA_real_,
-           sigma_log_impact_speed0 = NA_real_,
            sigma_collision1 = NA_real_,
            crash0 = NA_integer_,
            crash1 = NA_integer_,

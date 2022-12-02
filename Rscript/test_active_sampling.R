@@ -13,25 +13,26 @@ cat("\14")
 # target <- "impact speed reduction"
 # opt_method <- "naive"
 # use_logic <- FALSE
-# batch_size <- 500
+# batch_size <- 100
 # niter <- 5
 # verbose <- TRUE
-# plot <- TRUE
+# plot <- FALSE
 # nboot <-  100
 # i <- 1
+# paper <- "stats"
 
 for (i in 1:1) {
   tic()
   print(sprintf("%d", i))
   res <- active_sampling(df, 
-                         sampling_method = "importance sampling", 
-                         proposal_dist = "density sampling",
-                         target = "NA", 
-                         opt_method = "NA",
+                         sampling_method = "active sampling", 
+                         proposal_dist = "NA",
+                         target = "impact speed reduction", 
+                         opt_method = "naive",
                          use_logic = FALSE,
                          paper = "stats",
-                         batch_size = 100, 
-                         niter = 5, 
+                         batch_size = 10, 
+                         niter = 50, 
                          verbose = TRUE, 
                          plot = FALSE, 
                          nboot = 0)
