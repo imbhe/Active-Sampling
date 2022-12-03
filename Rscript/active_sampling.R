@@ -469,6 +469,8 @@ active_sampling <- function(data,
     # Sample new instances. ----
     
     # Sample from multinomial distribution.
+    prob$sampling_probability[is.na(prob$sampling_probability)] = (1-sum(prob$sampling_probability[!is.na(prob$sampling_probability)]))/
+      length(prob$sampling_probability[is.na(prob$sampling_probability)])
     n_hits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
     
     # Get data for sampled observations.
@@ -637,4 +639,5 @@ active_sampling <- function(data,
               crashes = labelled %>% filter(impact_speed0 > 0)))
   
 }
+
 
