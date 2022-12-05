@@ -210,7 +210,7 @@ active_sampling <- function(data,
   totals <- matrix(0, nrow = niter, ncol = 4)  # To store estimates of totals per iteration.
   t_y <- rep(0, 4) # To store pooled estimates of totals.
   covest_classic <- matrix(0, nrow = 4, ncol = 4) # To store covariance matrix estimates per iteration.
-  
+  se_boot <- # To store bootstrap standard error.
   
   # For optimised sampling:
   # Prediction models will be updated n_update observations have been collected.
@@ -469,8 +469,6 @@ active_sampling <- function(data,
     # Sample new instances. ----
     
     # Sample from multinomial distribution.
-    prob$sampling_probability[is.na(prob$sampling_probability)] = (1-sum(prob$sampling_probability[!is.na(prob$sampling_probability)]))/
-      length(prob$sampling_probability[is.na(prob$sampling_probability)])
     n_hits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
     
     # Get data for sampled observations.
@@ -522,7 +520,7 @@ active_sampling <- function(data,
     
     se_mart <- sqrt(diag(t(G) %*% cov %*% G))
     
-    if ( all(se_mart == 0) | any(is.na(se_mart))) { # Zero at first iteration. Set to NA. 
+    if ( all(se_mart == 0) | any(is.na(se_mart)) ) { # Zero at first iteration. Set to NA. 
       se_mart <- rep(NA, 3)
     }
     
@@ -534,17 +532,18 @@ active_sampling <- function(data,
       as.matrix()
     X <- t((t(Y / new_sample$pi) - t_y)) / batch_size
     n <- batch_size
-    
+    W <- diag(new_sample$n_hits * new_sample$eoff_acc_prob^2, nrow = nrow(X), ncol = nrow(X))
+
     covest_classic <- rewt^2 * covest_classic + 
-      bwt^2 * n / (n - 1) * t(X) %*% diag(new_sample$n_hits * new_sample$eoff_acc_prob^2) %*% X
-    
+        bwt^2 * n / (n - 1) * t(X) %*% W %*% X
+
     G <- matrix(data = c(1 / t_y[4], 0, 0,-t_y[1] / t_y[4]^2,
                          0, 1 / t_y[4], 0,-t_y[2] / t_y[4]^2,
                          0, 0, 1 / t_y[4],-t_y[3] / t_y[4]^2), 
                 byrow = FALSE, nrow = 4, ncol = 3)
     
     se_classic <- sqrt(diag(t(G) %*% covest_classic %*% G))
-    
+
     
     # Variance estimation using bootstrap method. ----
     
@@ -564,9 +563,7 @@ active_sampling <- function(data,
                    statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
                    R = nboot) 
       se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
-    } else {
-      se_boot <- rep(NA, length(est))
-    }
+    } 
     
     # Confidence intervals.
     lower_mart <- est - qnorm(0.975) * se_mart 

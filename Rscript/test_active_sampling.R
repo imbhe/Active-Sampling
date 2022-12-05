@@ -31,8 +31,8 @@ for (i in 1:1) {
                          opt_method = "naive",
                          use_logic = FALSE,
                          paper = "stats",
-                         batch_size = 10, 
-                         niter = 50, 
+                         batch_size = 2, 
+                         niter = 5, 
                          verbose = TRUE, 
                          plot = FALSE, 
                          nboot = 0)
