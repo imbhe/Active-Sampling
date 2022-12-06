@@ -564,7 +564,7 @@ active_sampling <- function(data,
                    R = nboot) 
       se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
     } 
-    
+
     # Confidence intervals.
     lower_mart <- est - qnorm(0.975) * se_mart 
     upper_mart <- est + qnorm(0.975) * se_mart
