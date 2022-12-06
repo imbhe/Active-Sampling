@@ -210,7 +210,7 @@ active_sampling <- function(data,
   totals <- matrix(0, nrow = niter, ncol = 4)  # To store estimates of totals per iteration.
   t_y <- rep(0, 4) # To store pooled estimates of totals.
   covest_classic <- matrix(0, nrow = 4, ncol = 4) # To store covariance matrix estimates per iteration.
-  se_boot <- # To store bootstrap standard error.
+  se_boot <- rep(NA, 3)# To store bootstrap standard error.
   
   # For optimised sampling:
   # Prediction models will be updated n_update observations have been collected.
