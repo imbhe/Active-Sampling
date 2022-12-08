@@ -31,10 +31,10 @@ for (i in 1:1) {
                          opt_method = "naive",
                          use_logic = FALSE,
                          paper = "stats",
-                         batch_size = 2, 
-                         niter = 5, 
+                         batch_size = 5, 
+                         niter = 20, 
                          verbose = TRUE, 
                          plot = FALSE, 
-                         nboot = 0)
+                         nboot = 100)
   toc()
 }

@@ -236,7 +236,7 @@ active_sampling <- function(data,
   # If bootstrap is used: run every 10th new observation. Find corresponding iterations.
   if ( nboot > 0 & niter * batch_size >= 10) {
     
-    n_update <- seq(0, niter * batch_size, 10)[-1]
+    n_update <- c(seq(10, 50, 10), seq(75, 200, 25), seq(250, 500, 50), seq(600, 1000, 100), seq(1250, 2500, 250), seq(3000, 5000, 500), seq(6000, 10000, 1000))
     boot_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     boot_update_iterations <- unique(as.numeric(na.omit(boot_update_iterations)))
     
@@ -473,14 +473,15 @@ active_sampling <- function(data,
     
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
-      mutate(batch_size = batch_size,
+      mutate(batch_size = batch_size, 
+             n_hits = n_hits,
              pi = prob$sampling_probability,
              mu = batch_size * pi,
-             n_hits = n_hits,
-             sampling_weight = n_hits / mu, 
-             batch_weight = batch_size / n_seq[i]) %>% 
+             sampling_weight = 1 / mu, 
+             batch_weight = batch_size / n_seq[i],
+             final_weight = eoff_acc_prob * n_hits * sampling_weight) %>% 
       filter(n_hits > 0) %>% 
-      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, batch_weight, pi, mu, n_hits, sampling_weight) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, n_hits, pi, mu, sampling_weight, batch_weight, final_weight) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
     
@@ -488,7 +489,7 @@ active_sampling <- function(data,
     labelled %<>% 
       mutate(batch_weight = batch_size / n_seq[i]) %>% # Update batch-weights.
       add_row(new_sample) %>% # Add new sample.
-      mutate(final_weight = eoff_acc_prob * batch_weight * sampling_weight) 
+      mutate(final_weight = eoff_acc_prob * batch_weight * n_hits * sampling_weight) 
     
     
     # Estimate target quantities. ----
@@ -498,9 +499,7 @@ active_sampling <- function(data,
     rewt <- c(n_seq[1], n_seq)[i] / n_seq[i] # Re-weight old batch weights by n_1 + ... n_{k-1} / (n_1 + ... + n_k).
     
     # Estimate totals in current iteration.
-    totals[i, ] <- estimate_totals(new_sample %>% 
-                                     mutate(final_weight = eoff_acc_prob * sampling_weight), 
-                                   "final_weight")
+    totals[i, ] <- estimate_totals(new_sample, "final_weight")
     
     # Pooled estimate of totals.
     t_y <- rewt * t_y + bwt * totals[i, ]
@@ -546,22 +545,20 @@ active_sampling <- function(data,
 
     
     # Variance estimation using bootstrap method. ----
-    
-    # If an element is selected multiple times: split into multiple observations.
-    # Only counts as one simulation.
-    ix <- rep(1:nrow(labelled), labelled$n_hits) # To repeat rows.
-    reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0.
-    crashes <- labelled[ix, ] %>%
-      mutate(sampling_weight = 1 / mu, 
-             final_weight = eoff_acc_prob * sampling_weight) %>% 
+    crashes <- labelled %>% 
       filter(impact_speed0 > 0 & final_weight > 0)
     
     # If any crashes have been generated.
     # Run bootstrap at selected iterations (every 10th new observation).
     if ( nrow(crashes) > 0 & i %in% boot_update_iterations ) { 
       boot <- boot(crashes, 
-                   statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
-                   R = nboot) 
+                   statistic = function(data, w) {
+                     data$final_weight = data$final_weight * w 
+                     estimate_targets(data, weightvar = "final_weight")
+                   }, 
+                   R = nboot,
+                   stype = "w",
+                   weights = crashes$n_hits) 
       se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
     } 
     
