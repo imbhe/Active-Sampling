@@ -1,3 +1,22 @@
+# Variance estimation using bootstrap method. ----
+crashes <- labelled %>% 
+  filter(impact_speed0 > 0 & final_weight > 0)
+
+# If any crashes have been generated.
+# Run bootstrap at selected iterations (every 10th new observation).
+if ( nrow(crashes) > 0 & i %in% boot_update_iterations ) { 
+  boot <- boot(crashes, 
+               statistic = function(data, w) {
+                 data$final_weight = data$final_weight * w 
+                 estimate_targets(data, weightvar = "final_weight")
+               }, 
+               R = nboot,
+               stype = "w",
+               weights = crashes$nhits) 
+  se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
+} 
+
+
 
 impact_speed0_logmean <- with(crashes, sum(w * log(impact_speed0)) / sum(w))
 impact_speed0_logSD <- with(crashes, sqrt(sum(w * (log(impact_speed0) - impact_speed0_logmean)^2) / sum(w)))

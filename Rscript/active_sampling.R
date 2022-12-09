@@ -210,7 +210,7 @@ active_sampling <- function(data,
   totals <- matrix(0, nrow = niter, ncol = 4)  # To store estimates of totals per iteration.
   t_y <- rep(0, 4) # To store pooled estimates of totals.
   covest_classic <- matrix(0, nrow = 4, ncol = 4) # To store covariance matrix estimates per iteration.
-  
+  se_boot <- rep(NA, 3)# To store bootstrap standard error.
   
   # For optimised sampling:
   # Prediction models will be updated n_update observations have been collected.
@@ -236,7 +236,7 @@ active_sampling <- function(data,
   # If bootstrap is used: run every 10th new observation. Find corresponding iterations.
   if ( nboot > 0 & niter * batch_size >= 10) {
     
-    n_update <- seq(0, niter * batch_size, 10)[-1]
+    n_update <- c(seq(10, 50, 10), seq(75, 200, 25), seq(250, 500, 50), seq(600, 1000, 100), seq(1250, 2500, 250), seq(3000, 5000, 500), seq(6000, 10000, 1000))
     boot_update_iterations <- vapply(1:length(n_update), function(ix) which(c(n_seq, max(n_seq) + 1) >= n_update[ix] & c(0, n_seq) >= n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     boot_update_iterations <- unique(as.numeric(na.omit(boot_update_iterations)))
     
@@ -469,20 +469,19 @@ active_sampling <- function(data,
     # Sample new instances. ----
     
     # Sample from multinomial distribution.
-    prob$sampling_probability[is.na(prob$sampling_probability)] = (1-sum(prob$sampling_probability[!is.na(prob$sampling_probability)]))/
-      length(prob$sampling_probability[is.na(prob$sampling_probability)])
-    n_hits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
+    nhits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
     
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
-      mutate(batch_size = batch_size,
+      mutate(batch_size = batch_size, 
+             nhits = nhits,
              pi = prob$sampling_probability,
              mu = batch_size * pi,
-             n_hits = n_hits,
-             sampling_weight = n_hits / mu, 
-             batch_weight = batch_size / n_seq[i]) %>% 
-      filter(n_hits > 0) %>% 
-      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, batch_weight, pi, mu, n_hits, sampling_weight) %>% 
+             sampling_weight = 1 / mu, 
+             batch_weight = batch_size / n_seq[i],
+             final_weight = eoff_acc_prob * nhits * sampling_weight) %>% 
+      filter(nhits > 0) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, nhits, pi, mu, sampling_weight, batch_weight, final_weight) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
     
@@ -490,7 +489,7 @@ active_sampling <- function(data,
     labelled %<>% 
       mutate(batch_weight = batch_size / n_seq[i]) %>% # Update batch-weights.
       add_row(new_sample) %>% # Add new sample.
-      mutate(final_weight = eoff_acc_prob * batch_weight * sampling_weight) 
+      mutate(final_weight = eoff_acc_prob * batch_weight * nhits * sampling_weight) 
     
     
     # Estimate target quantities. ----
@@ -500,9 +499,7 @@ active_sampling <- function(data,
     rewt <- c(n_seq[1], n_seq)[i] / n_seq[i] # Re-weight old batch weights by n_1 + ... n_{k-1} / (n_1 + ... + n_k).
     
     # Estimate totals in current iteration.
-    totals[i, ] <- estimate_totals(new_sample %>% 
-                                     mutate(final_weight = eoff_acc_prob * sampling_weight), 
-                                   "final_weight")
+    totals[i, ] <- estimate_totals(new_sample, "final_weight")
     
     # Pooled estimate of totals.
     t_y <- rewt * t_y + bwt * totals[i, ]
@@ -522,7 +519,7 @@ active_sampling <- function(data,
     
     se_mart <- sqrt(diag(t(G) %*% cov %*% G))
     
-    if ( all(se_mart == 0) | any(is.na(se_mart))) { # Zero at first iteration. Set to NA. 
+    if ( all(se_mart == 0) | any(is.na(se_mart)) ) { # Zero at first iteration. Set to NA. 
       se_mart <- rep(NA, 3)
     }
     
@@ -534,27 +531,25 @@ active_sampling <- function(data,
       as.matrix()
     X <- t((t(Y / new_sample$pi) - t_y)) / batch_size
     n <- batch_size
-    
+    W <- diag(new_sample$nhits * new_sample$eoff_acc_prob^2, nrow = nrow(X), ncol = nrow(X))
+
     covest_classic <- rewt^2 * covest_classic + 
-      bwt^2 * n / (n - 1) * t(X) %*% diag(new_sample$n_hits * new_sample$eoff_acc_prob^2) %*% X
-    
+        bwt^2 * n / (n - 1) * t(X) %*% W %*% X
+
     G <- matrix(data = c(1 / t_y[4], 0, 0,-t_y[1] / t_y[4]^2,
                          0, 1 / t_y[4], 0,-t_y[2] / t_y[4]^2,
                          0, 0, 1 / t_y[4],-t_y[3] / t_y[4]^2), 
                 byrow = FALSE, nrow = 4, ncol = 3)
     
     se_classic <- sqrt(diag(t(G) %*% covest_classic %*% G))
-    
+
     
     # Variance estimation using bootstrap method. ----
     
-    # If an element is selected multiple times: split into multiple observations.
-    # Only counts as one simulation.
-    ix <- rep(1:nrow(labelled), labelled$n_hits) # To repeat rows.
-    reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0.
+    # If an element is selected multiple times: split into multiple observations/rows.
+    ix <- rep(1:nrow(labelled), labelled$nhits) # To repeat rows.
     crashes <- labelled[ix, ] %>%
-      mutate(sampling_weight = 1 / mu, 
-             final_weight = eoff_acc_prob * sampling_weight) %>% 
+      mutate(final_weight = eoff_acc_prob * batch_weight * sampling_weight) %>%
       filter(impact_speed0 > 0 & final_weight > 0)
     
     # If any crashes have been generated.
@@ -564,10 +559,8 @@ active_sampling <- function(data,
                    statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
                    R = nboot) 
       se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
-    } else {
-      se_boot <- rep(NA, length(est))
-    }
-    
+    }  
+
     # Confidence intervals.
     lower_mart <- est - qnorm(0.975) * se_mart 
     upper_mart <- est + qnorm(0.975) * se_mart
