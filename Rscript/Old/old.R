@@ -1,23 +1,21 @@
-
-# If an element is selected multiple times: split into multiple observations.
-# Only counts as one simulation.
-ix <- rep(1:nrow(labelled), labelled$n_hits) # To repeat rows.
-reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0.
-crashes <- labelled[ix, ] %>%
-  mutate(sampling_weight = 1 / mu,
-         final_weight = eoff_acc_prob * sampling_weight) %>%
+# Variance estimation using bootstrap method. ----
+crashes <- labelled %>% 
   filter(impact_speed0 > 0 & final_weight > 0)
 
 # If any crashes have been generated.
 # Run bootstrap at selected iterations (every 10th new observation).
 if ( nrow(crashes) > 0 & i %in% boot_update_iterations ) { 
   boot <- boot(crashes, 
-               statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
-               R = nboot) 
+               statistic = function(data, w) {
+                 data$final_weight = data$final_weight * w 
+                 estimate_targets(data, weightvar = "final_weight")
+               }, 
+               R = nboot,
+               stype = "w",
+               weights = crashes$nhits) 
   se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
 } 
 
------
 
 
 impact_speed0_logmean <- with(crashes, sum(w * log(impact_speed0)) / sum(w))

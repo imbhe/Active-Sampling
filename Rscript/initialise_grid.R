@@ -10,7 +10,7 @@ initialise_grid <- function(data, grid) {
            batch_weight = 1,
            pi = 0,
            mu = 0,
-           n_hits = 0,
+           nhits = 0,
            sampling_weight = 0,
            final_weight = 0)
   

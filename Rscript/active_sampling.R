@@ -469,19 +469,19 @@ active_sampling <- function(data,
     # Sample new instances. ----
     
     # Sample from multinomial distribution.
-    n_hits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
+    nhits <- as.numeric(rmultinom(n = 1, size = batch_size, prob = prob$sampling_probability))
     
     # Get data for sampled observations.
     new_sample <- unlabelled %>% 
       mutate(batch_size = batch_size, 
-             n_hits = n_hits,
+             nhits = nhits,
              pi = prob$sampling_probability,
              mu = batch_size * pi,
              sampling_weight = 1 / mu, 
              batch_weight = batch_size / n_seq[i],
-             final_weight = eoff_acc_prob * n_hits * sampling_weight) %>% 
-      filter(n_hits > 0) %>% 
-      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, n_hits, pi, mu, sampling_weight, batch_weight, final_weight) %>% 
+             final_weight = eoff_acc_prob * nhits * sampling_weight) %>% 
+      filter(nhits > 0) %>% 
+      dplyr::select(caseID, eoff, acc, eoff_acc_prob, sim_count0, sim_count1, iter, batch_size, nhits, pi, mu, sampling_weight, batch_weight, final_weight) %>% 
       mutate(iter = i)%>%
       left_join(data, by = c("caseID", "eoff", "acc", "eoff_acc_prob"))
     
@@ -489,7 +489,7 @@ active_sampling <- function(data,
     labelled %<>% 
       mutate(batch_weight = batch_size / n_seq[i]) %>% # Update batch-weights.
       add_row(new_sample) %>% # Add new sample.
-      mutate(final_weight = eoff_acc_prob * batch_weight * n_hits * sampling_weight) 
+      mutate(final_weight = eoff_acc_prob * batch_weight * nhits * sampling_weight) 
     
     
     # Estimate target quantities. ----
@@ -531,7 +531,7 @@ active_sampling <- function(data,
       as.matrix()
     X <- t((t(Y / new_sample$pi) - t_y)) / batch_size
     n <- batch_size
-    W <- diag(new_sample$n_hits * new_sample$eoff_acc_prob^2, nrow = nrow(X), ncol = nrow(X))
+    W <- diag(new_sample$nhits * new_sample$eoff_acc_prob^2, nrow = nrow(X), ncol = nrow(X))
 
     covest_classic <- rewt^2 * covest_classic + 
         bwt^2 * n / (n - 1) * t(X) %*% W %*% X
@@ -545,23 +545,23 @@ active_sampling <- function(data,
 
     
     # Variance estimation using bootstrap method. ----
-    crashes <- labelled %>% 
+    
+    # If an element is selected multiple times: split into multiple observations.
+    ix <- rep(1:nrow(labelled), labelled$nhits) # To repeat rows.
+    reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0.
+    crashes <- labelled[ix, ] %>%
+      mutate(final_weight = eoff_acc_prob * sampling_weight) %>%
       filter(impact_speed0 > 0 & final_weight > 0)
     
     # If any crashes have been generated.
     # Run bootstrap at selected iterations (every 10th new observation).
     if ( nrow(crashes) > 0 & i %in% boot_update_iterations ) { 
       boot <- boot(crashes, 
-                   statistic = function(data, w) {
-                     data$final_weight = data$final_weight * w 
-                     estimate_targets(data, weightvar = "final_weight")
-                   }, 
-                   R = nboot,
-                   stype = "w",
-                   weights = crashes$n_hits) 
+                   statistic = function(data, ix) estimate_targets(data[ix, ], weightvar = "final_weight"), 
+                   R = nboot) 
       se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
-    } 
-    
+    }  
+
     # Confidence intervals.
     lower_mart <- est - qnorm(0.975) * se_mart 
     upper_mart <- est + qnorm(0.975) * se_mart
