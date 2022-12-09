@@ -546,11 +546,10 @@ active_sampling <- function(data,
     
     # Variance estimation using bootstrap method. ----
     
-    # If an element is selected multiple times: split into multiple observations.
+    # If an element is selected multiple times: split into multiple observations/rows.
     ix <- rep(1:nrow(labelled), labelled$nhits) # To repeat rows.
-    reps <- which(c(1, diff(ix)) == 0) # Find duplicate rows, set corresponding simulation counts to 0.
     crashes <- labelled[ix, ] %>%
-      mutate(final_weight = eoff_acc_prob * sampling_weight) %>%
+      mutate(final_weight = eoff_acc_prob * batch_weight * sampling_weight) %>%
       filter(impact_speed0 > 0 & final_weight > 0)
     
     # If any crashes have been generated.
