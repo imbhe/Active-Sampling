@@ -524,17 +524,16 @@ active_sampling <- function(data,
     }
     
     
-    # Variance estimation using classical survey sampling method (Hansen-Hurwitz estimator). ----
+    # Variance estimation using classical survey sampling method (Sen-Yates-Grundy estimator). ----
     Y <- new_sample %>% 
       mutate(baseline_crash = impact_speed0 > 0) %>% 
       dplyr::select(impact_speed_reduction, injury_risk_reduction, crash_avoidance, baseline_crash) %>%
       as.matrix()
-    X <- t((t(Y / new_sample$pi) - t_y)) / batch_size
     n <- batch_size
-    W <- diag(new_sample$nhits * new_sample$eoff_acc_prob^2, nrow = nrow(X), ncol = nrow(X))
+    X <- with(new_sample, t((t(eoff_acc_prob * Y / mu) - totals[i, ] / n)))
+    W <- with(new_sample, diag(nhits, nrow = nrow(X), ncol = nrow(X)))
 
-    covest_classic <- rewt^2 * covest_classic + 
-        bwt^2 * n / (n - 1) * t(X) %*% W %*% X
+    covest_classic <- rewt^2 * covest_classic + bwt^2 * n / (n - 1) * t(X) %*% W %*% X 
 
     G <- matrix(data = c(1 / t_y[4], 0, 0,-t_y[1] / t_y[4]^2,
                          0, 1 / t_y[4], 0,-t_y[2] / t_y[4]^2,
@@ -561,6 +560,7 @@ active_sampling <- function(data,
       se_boot <- apply(boot$t, 2 , sd) # Standard error of estimates.
     }  
 
+    
     # Confidence intervals.
     lower_mart <- est - qnorm(0.975) * se_mart 
     upper_mart <- est + qnorm(0.975) * se_mart

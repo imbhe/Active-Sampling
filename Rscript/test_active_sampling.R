@@ -21,18 +21,20 @@ cat("\14")
 # i <- 1
 # paper <- "stats"
 
+# df$eoff_acc_prob <- 1
+
 for (i in 1:1) {
   tic()
   print(sprintf("%d", i))
   res <- active_sampling(df, 
-                         sampling_method = "active sampling", 
-                         proposal_dist = "NA",
-                         target = "impact speed reduction", 
-                         opt_method = "naive",
+                         sampling_method = "importance sampling", 
+                         proposal_dist = "density",
+                         target = "NA", 
+                         opt_method = "NA",
                          use_logic = FALSE,
                          paper = "stats",
                          batch_size = 2, 
-                         niter = 100, 
+                         niter = 50, 
                          verbose = TRUE, 
                          plot = FALSE, 
                          nboot = 500)
