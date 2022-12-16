@@ -632,5 +632,3 @@ active_sampling <- function(data,
               crashes = labelled %>% filter(impact_speed0 > 0)))
   
 }
-
-
