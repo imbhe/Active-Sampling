@@ -2,7 +2,7 @@ library("readxl")
 source("Rscript/active_sampling.R")
 source("Rscript/call_active_sampling.R")
 load("Data/Data.R")
-sampling_input <- read_excel("Data/sampling_method_input_rmse_example.xlsx")
+sampling_input <- read_excel("Data/sampling_method_input_coverage_example.xlsx")
 param_input <- read_excel("Data/parameter_input.xlsx")
 add_effn = 500
 niter = ceiling(add_effn/param_input$batch_size)
@@ -15,12 +15,12 @@ for(j in 1:length(param_input$Sim_n)){
   
   for(i in 1:tail(sampling_input$sim_order, 1)){
     res_in_loop <- call_active_sampling(df,sampling_input[i,],inputparameter)
-    print(paste("sampling method",i,"is finished"))
+    print(paste("sampling method",i,sampling_input$group[i],"is finished"))
     res_top_loop[[i]] <- res_in_loop
   }
   print(paste("loop",j,"is finished"))
   res_total[[j]] <- res_top_loop
 }  
 
-save(res_total, file = "Data/result.R")
+save(res_total, file = "Output/result2.R")
 

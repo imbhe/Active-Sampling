@@ -10,9 +10,9 @@ Make sure that the boot, caret, magrittr, ranger, stringr and tidyverse packages
 
 * calculate_sampling_scheme.R, estimate_targets.R, estimate_totals.R, initialise_grid.R, safe_caret_train.R, and update_predictions.R are helper functions used internally in active_sampling.R.
 
-* run_post_analysis.R does...
+* run_simulations.R gets all inputs to run simulations including input data, parameter setups for simualtions and sampling methods and this script sets the simulation order.
 
-* sim_output.R does...
+* call_active_sampling.R calls active_sampling.R to run several batchs of same type of sampling method, calculate the average of the batch results and structure output file.
 
 Output and figures are stored in the Output folder.
 

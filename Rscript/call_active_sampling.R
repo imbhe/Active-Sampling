@@ -1,27 +1,37 @@
 call_active_sampling <- function(df,input,inputparameter){
+  niter = inputparameter$niter
+  batch_size = inputparameter$batch_size
   Sim_n = inputparameter$Sim_n
+  target = input$target
+  proposal_dist = input$proposal_dist
+  sampling_method = input$sampling_method
   group = input$group
+  use_logic = input$use_logic
+  opt_method = input$opt_method
   res_list <- replicate(Sim_n, data.frame())
   labelled_list <- replicate(Sim_n, data.frame())
   crashes_list<- replicate(Sim_n, data.frame())
+  nboot = inputparameter$nboot
+  
   for (k in 1:Sim_n){
-    print(paste("simulation",k,"start,","number per iteration:",inputparameter$batch_size,",total iteration:",inputparameter$niter))
+    print(paste("Sampling method",group,",simulation",k,"starts,","number per iteration:",batch_size,",total iteration:",niter))
     set.seed(k)
-    out <- active_sampling (df, 
-                            input$sampling_method, 
-                            input$proposal_dist,
-                            input$target, 
-                            input$opt_method,
-                            inputparameter$batch_size,
-                            inputparameter$niter,
-                            inputparameter$nboot,
+    out <- active_sampling (df, sampling_method, 
+                            proposal_dist,
+                            target, 
+                            opt_method,
+                            batch_size,
+                            niter,
+                            nboot,
                             verbose = FALSE,
                             plot = FALSE)
     res_list[[k]] <- out$results
     labelled_list[[k]] <- out$labelled
+    crashes_list[[k]] <- out$crashes
   }
   res = do.call(rbind, res_list)
   labelled = do.call(rbind, labelled_list)
+  crashes = do.call(rbind, crashes_list)
   
   aver = as.data.frame(matrix(nrow=niter,ncol=0))
   biggest = as.data.frame(matrix(nrow=niter,ncol=0))
