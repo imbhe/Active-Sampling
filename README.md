@@ -6,7 +6,7 @@ Make sure that the boot, caret, magrittr, ranger, stringr and tidyverse packages
 
 * active_sampling.R: Implements the active sampling method for the crash-causation-based scenario generation application considered in the paper. Additional details of input and output parameters of this function are provided in the file header.
 
-* test_active_sampling.R is a small test script with a small input dataset Data/glance_dec_test.R.
+* test_active_sampling.R is a small test script with a small input dataset Data/glance_dec_data_test.R.
 
 * calculate_sampling_scheme.R, estimate_targets.R, estimate_totals.R, initialise_grid.R, safe_caret_train.R, and update_predictions.R are helper functions used internally in active_sampling.R.
 
