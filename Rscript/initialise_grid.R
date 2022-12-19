@@ -19,7 +19,6 @@ initialise_grid <- function(data, grid) {
            collision_prob1_pred = NA_real_, 
            impact_speed_reduction_pred = NA_real_,
            sigma_impact_speed_reduction = NA_real_,
-           sigma_injury_risk_reduction = NA_real_,
            sigma_collision1 = NA_real_,
            iter = NA) 
   
