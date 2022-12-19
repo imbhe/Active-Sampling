@@ -518,7 +518,7 @@ active_sampling <- function(data,
                      opt_method = opt_method,
                      batch_size = batch_size) %>% 
       add_column(iter = i, # Iteration history.
-                 sample_size = ntot[i]) %>% 
+                 total_sample_size = ntot[i]) %>% 
       add_column(as_tibble(as.list(est))) %>% # Estimates.
       add_column(as_tibble(as.list(sqerr))) %>% # Squared errors.
       add_column(as_tibble(as.list(se_mart)))  %>% # Standard errors.
