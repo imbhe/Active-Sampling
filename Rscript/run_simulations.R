@@ -22,5 +22,5 @@ for(j in 1:length(param_input$Sim_n)){
   res_total[[j]] <- res_top_loop
 }  
 
-save(res_total, file = "Output/result2.R")
+save(res_total, file = "Output/result.R")
 
