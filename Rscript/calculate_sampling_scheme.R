@@ -9,16 +9,15 @@ calculate_sampling_scheme <- function(unlabelled,
                                                         "severity sampling"), 
                                       target = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
                                                  "impact speed reduction",
-                                                 "injury risk reduction", 
                                                  "crash avoidance"),
-                                      opt_method = c("naive", 
-                                                     "+ prediction uncertainty", 
-                                                     "+ model uncertainty"),
+                                      opt_method = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
+                                                     "naive", 
+                                                     "minimise anticipated variance"),
                                       est = NULL,
                                       r2 = NULL) {
 
 
-  # Calculate 'size' of pps (probability proportional to size) sampling. ----
+  # Calculate 'size' of pps (probability-proportional-to-size) sampling. ----
   if ( sampling_method == "simple random sampling" ) { 
     
     size <- rep(1, nrow(unlabelled))
@@ -60,13 +59,6 @@ calculate_sampling_scheme <- function(unlabelled,
       pred <- unlabelled$impact_speed_reduction_pred
       sigma <- unlabelled$sigma_impact_speed_reduction
 
-    } else if ( target == "injury risk reduction" ) {
-      
-      r2 <- r2$injury_risk_reduction
-      mu <- est$mean_injury_risk_reduction
-      pred <- unlabelled$injury_risk_reduction_pred
-      sigma <- unlabelled$sigma_injury_risk_reduction
-      
     } else if ( target == "crash avoidance" ) {
       
       r2 <- r2$accuracy_crash1
@@ -89,20 +81,8 @@ calculate_sampling_scheme <- function(unlabelled,
       sigma <- 0
       collision_prob0_pred <- collision_prob0_pred^2
     }   
-    
-    
-    size2 <- collision_prob0_pred * ((pred - mu)^2 + sigma^2)
-    
-    
-    # If opt_method == "+ model uncertainty":
-    # Account for model uncertainty and reduce random fluctuations using weighted 
-    # moving average over model and estimates in current and previous iteration. 
-    if ( opt_method == "+ model uncertainty" ) {
-      prev_size2 <- with(unlabelled, size / eoff_acc_prob)^2 # 'size' from previous iteration.
-      size2 <- size2 / mean(size2) + prev_size2 / mean(prev_size2)
-    }
-    
-    size <- unlabelled$eoff_acc_prob * sqrt(size2)
+
+    size <- unlabelled$eoff_acc_prob * sqrt(collision_prob0_pred * ((pred - mu)^2 + sigma^2))
 
   } 
   
@@ -116,6 +96,6 @@ calculate_sampling_scheme <- function(unlabelled,
   
   
   # Return.
-  return(list(size = size, sampling_probability = sampling_probability))
+  return(list(sampling_probability = sampling_probability))
   
 }
