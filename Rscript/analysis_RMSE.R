@@ -1,15 +1,18 @@
 library("ggplot2")
 library("ggpubr")
+library("scales")
 newcolors = c("#DF76A0", "#0000FF","#B2182B","#E2891F","#009999","black")
 load("Data/RMSE_analysis.R")
+
 averlist = list()
 for (i in 1:length(res_total[[1]])) {
   aver <- res_total[[1]][[i]]$aver
   averlist[[i]] <- aver
 }
+
 aver_sum = do.call(rbind, averlist)
 active_sampling_compare = aver_sum[(aver_sum$group =="impact speed reduction" |  aver_sum$group =="crash avoidance"),]
-compare_diff_sampling = rbind(active_sampling_compare[active_sampling_compare$opt_method== "+ prediction uncertainty",],
+compare_diff_sampling = rbind(active_sampling_compare[active_sampling_compare$opt_method== "minimising anticipated variance",],
                        aver_sum[(aver_sum$group == "simple random sampling") |
                                    (aver_sum$group == "density sampling") |
                                    (aver_sum$group == "severity sampling"),])
@@ -33,7 +36,7 @@ groups1 = c("Naive",
             "Minimizing anticipated variance"
 )
 active_sampling_compare[active_sampling_compare$opt_method == "naive" ,]$plot_opt_method = groups1[1]
-active_sampling_compare[active_sampling_compare$opt_method == "+ prediction uncertainty",]$plot_opt_method = groups1[2]
+active_sampling_compare[active_sampling_compare$opt_method == "minimising anticipated variance",]$plot_opt_method = groups1[2]
 active_sampling_compare$plot_opt_method <- factor(active_sampling_compare$plot_opt_method, levels = groups1)
 
 ptsize <- 11
@@ -57,7 +60,7 @@ theme_update(axis.text = element_text(size = ptsize, colour = "black", family = 
              text = element_text(size = ptsize, colour = "black", family = "serif"))
 
 g1 <- ggplot(compare_diff_sampling,
-             aes(x = neff0,y=mean_impact_speed_reduction_sqerr,
+             aes(x = total_sample_size,y=mean_impact_speed_reduction_sqerr,
                  colour = new_group,linetype = new_group
                  
              )) +
@@ -75,7 +78,7 @@ g1 <- ggplot(compare_diff_sampling,
   theme(legend.position='bottom')
 
 g2 <- ggplot(compare_diff_sampling,
-             aes(x = neff0,y = crash_avoidance_rate_sqerr,
+             aes(x = total_sample_size,y = crash_avoidance_rate_sqerr,
                  colour = new_group,linetype = new_group
              )) +
   geom_line(size = 1) +
@@ -98,7 +101,7 @@ c1 <- ggarrange(g1, g2 ,
 ggsave(sprintf("Output/active_sampling_vs_importance_sampling.png"), c1, dpi = 1000, width =160, height =90, unit = "mm")
 
 g1 <- ggplot(active_sampling_compare[active_sampling_compare$group == "impact speed reduction",],
-             aes(x = neff0,y=mean_impact_speed_reduction_sqerr,
+             aes(x = total_sample_size,y=mean_impact_speed_reduction_sqerr,
                  colour = plot_opt_method,linetype = plot_opt_method
                  
              )) +
@@ -116,7 +119,7 @@ g1 <- ggplot(active_sampling_compare[active_sampling_compare$group == "impact sp
   theme(legend.position='bottom')
 
 g2 <- ggplot(active_sampling_compare[active_sampling_compare$group == "crash avoidance",],
-             aes(x = neff0,y = crash_avoidance_rate_sqerr,
+             aes(x = total_sample_size,y = crash_avoidance_rate_sqerr,
                  colour = plot_opt_method,linetype = plot_opt_method
              )) +
   geom_line(size = 1) +

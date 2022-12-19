@@ -12,7 +12,7 @@ for (i in 1:length(res_total[[1]])) {
 aver_sum = do.call(rbind, averlist)
 sim_combine = do.call(rbind, simlist)
 active_sampling_aver= aver_sum
-active_sampling_aver$neff0_44 = active_sampling_aver$neff0-44
+active_sampling_aver$neff0_44 = active_sampling_aver$total_sample_size - 44
 active_sampling_aver$mean_impact_speed_reduction_ci_cover_boot1 = NA
 active_sampling_aver$crash_avoidance_rate_ci_cover_boot1 = NA
 niter = max(unique(sim_combine$iter))
