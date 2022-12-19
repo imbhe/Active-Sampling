@@ -32,7 +32,7 @@
 # OUTPUT: 
 #
 # List of three datasets:
-#   - results: meta information of simulation, iteration history, estimates with standard errors and squared errors.
+#   - results: meta information of simulations, iteration history, estimates with standard errors and squared errors, etc.
 #   - labelled: all labelled data points. 
 #   - crashes: all generated crashes. 
 #
