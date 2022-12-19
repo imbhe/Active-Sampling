@@ -13,3 +13,7 @@ Make sure that the boot, caret, magrittr, ranger, stringr and tidyverse packages
 * run_post_analysis.R does...
 
 * sim_output.R does...
+
+Output and figures are stored in the Output folder.
+
+Input data, inluding input parameters to the experiments, are stored in the Data folder.
