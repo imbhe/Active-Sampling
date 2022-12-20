@@ -170,7 +170,8 @@ active_sampling <- function(data,
   }
   
   
-  # If bootstrap is used: run every 10th new observation. Find corresponding iterations.
+  # If bootstrap is used: run every 10th/25th/50th/100th new observation, etc. 
+  # Find corresponding iterations.
   if ( nboot > 0 & niter * batch_size >= 10) {
     
     n_update <- c(seq(10, 50, 10), seq(75, 200, 25), seq(250, 500, 50), seq(600, 1000, 100), seq(1250, 2500, 250), seq(3000, 5000, 500), seq(6000, 10000, 1000))
@@ -191,7 +192,7 @@ active_sampling <- function(data,
   plot_iter <- NA
   if ( plot ) {
     
-    n_update <- seq(0, niter * batch_size, 10)[-1]
+    n_update <- seq(0, niter * batch_size, 100)[-1]
     plot_iter <- vapply(1:length(n_update), function(ix) which(c(nseq, 0) > n_update[ix] & c(0, nseq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     plot_iter <- as.numeric(na.omit(plot_iter))
     plot_iter <- unique(plot_iter[plot_iter > 1])
