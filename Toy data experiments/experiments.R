@@ -67,15 +67,16 @@ cat("\14")
 
 # Set parameters.
 N <- 1e3
-nreps <- 1e2
-ninit <- 50
-bsize <- 50
-niter <- 5
+nreps <- 1e3
+nmax <- 250
 params <- tibble(model = c("const", "lm", "gam"), #, "rf", "gbt", "gpr"),  
                  label = c("SRS", "Linear", "Thin plate spline")) %>% #, "Random forest", "Gradient boosting tree", "Gaussian process regression")) %>% 
   crossing(naive = c(TRUE, FALSE), 
-           bandwidth = c(0.1, 0.32, 1, 10), # Highly non-linear, non-linear, polynomial, roughly linear.
-           r2 = c(0.1, 0.4, 0.7, 0.9, 0.95)^2) # Very weak, weak, moderate, strong, very strong.
+           bsize = c(10, 50),
+           bandwidth = c(0.1, 1), # Highly non-linear, roughly polynomial.
+           r2 = c(0.1, 0.5, 0.7, 0.95)^2) %>% # weak, Moderate, strong, very strong.
+  mutate(niter = nmax / bsize)
+
 
 # Simulate data.
 # set.seed(7083974) # For reproducibility. 
@@ -84,7 +85,9 @@ bandwidth_seq <- unique(params$bandwidth)
 for ( i in seq_along(r2_seq) ) {
   for ( j in seq_along(bandwidth_seq) ) {
     
-    dta <- sim_data(N = N) %>% 
+    dta <- sim_data(N = N, 
+                    r2 = r2_seq[i], 
+                    bandwidth = bandwidth_seq[j]) %>% 
       dplyr::select(-yhat) # Drop column yhat.
     
     # Store.
@@ -103,12 +106,6 @@ for ( i in seq_along(r2_seq) ) {
 }
 rm(r2_seq, bandwidth_seq)
 
-
-# Setup parallel backend.
-# cl <- makeCluster(10) 
-# registerDoParallel(cl)
-
-
 # Experiments.
 for ( i in 1:nrow(params) ) {
 
@@ -117,7 +114,7 @@ for ( i in 1:nrow(params) ) {
     as.data.frame()
   
   # To store results. 
-  sqerr <- FBM(nrow = niter, ncol = nreps, init = NA) 
+  sqerr <- FBM(nrow = params$niter[i], ncol = nreps, init = NA) 
   
   # Run repetitions in parallel.
   # val <- foreach(j = 1:nreps, .combine = rbind, .packages = c("purrr")) %dopar% {
@@ -125,9 +122,9 @@ for ( i in 1:nrow(params) ) {
     
     # Active sampling.
     res <- active_sampling(data = dta, 
-                           ninit = ninit, 
-                           bsize = bsize, 
-                           niter = niter, 
+                           ninit = params$bsize[i], 
+                           bsize = params$bsize[i], 
+                           niter = params$niter[i], 
                            model = params$model[i],
                            naive = params$naive[i]) 
     
@@ -137,17 +134,19 @@ for ( i in 1:nrow(params) ) {
     1 # foreach return value
   }
   
-  res <- tibble(rep = rep(1:nreps, each = niter), 
-                n = rep(cumsum(c(ninit, rep(bsize, niter - 1))), nreps),
+  res <- tibble(rep = rep(1:nreps, each = params$niter[i]), 
+                n = rep(cumsum(c(params$bsize[i], rep(params$bsize[i], params$niter[i] - 1))), nreps),
                 model = params$model[i],
+                bsize = params$bsize[i],
                 label = params$label[i],
                 naive = params$naive[i],
                 bandwidth = params$bandwidth[i],
                 r2 = params$r2[i],
                 sqerr = as.numeric(sqerr[])) 
   
-  save(res, file = sprintf("%s_%s_%s_%s.RData", 
+  save(res, file = sprintf("%s_%s_%s_%s_%s.RData", 
                            params$model[i],
+                           params$bsize[i],
                            params$naive[i],
                            params$bandwidth[i],
                            params$r2[i]))
@@ -157,7 +156,7 @@ for ( i in 1:nrow(params) ) {
 }
 # stopCluster(cl)
 # rm(cl, dta, bsize, i, j, N, ninit, niter, nreps)
-rm(dta, bsize, i, j, N, ninit, niter, nreps)
+rm(dta, i, j, N, nreps)
 
 
 
@@ -167,8 +166,9 @@ rm(dta, bsize, i, j, N, ninit, niter, nreps)
 # Load results datasets and calculate summary statistics. 
 allres <- aggres <- NULL
 for (i in 1:nrow(params) ) {
-  load(file = sprintf("%s_%s_%s_%s.RData", 
+  load(file = sprintf("%s_%s_%s_%s_%s.RData", 
                       params$model[i],
+                      params$bsize[i],
                       params$naive[i],
                       params$bandwidth[i],
                       params$r2[i]))
@@ -183,6 +183,7 @@ for (i in 1:nrow(params) ) {
     mutate(pval = NA_real_) %>%
     ungroup() %>% 
     mutate(model = params$model[i],
+           bsize = params$bsize[i],
            naive = params$naive[i],
            bandwidth = params$bandwidth[i],
            r2 = params$r2[i])
@@ -202,21 +203,24 @@ rm(i)
 
 
 # Test performance gain vs simple random sampling.
-nseq <- sort(unique(aggres$n))
 for ( i in 1:nrow(params) ) {
   if ( params$model[i] != "const" ) {
+    
+    tmp <- allres %>% 
+      filter( model %in% c("const", params$model[i])
+              & bsize == params$bsize[i]
+              & naive == params$naive[i] 
+              & bandwidth == params$bandwidth[i]
+              & r2 == params$r2[i])
+    
+    nseq <- sort(unique(tmp$n))
+    
     for ( j in 1:length(nseq) ) {
-      
-      tmp <- allres %>% 
-        filter( model %in% c("const", params$model[i])
-                & naive == params$naive[i] 
-                & bandwidth == params$bandwidth[i]
-                & r2 == params$r2[i]
-                & n == nseq[j])
-      
-      test <- t.test(sqerr~model, var.equal = FALSE, data = tmp)
+
+      test <- t.test(sqerr~model, var.equal = FALSE, data = tmp %>% filter(n == nseq[j]))
       
       aggres[which(aggres$model == params$model[i]
+                   & aggres$bsize == params$bsize[i]
                    & aggres$naive == params$naive[i] 
                    & aggres$bandwidth == params$bandwidth[i]
                    & aggres$r2 == params$r2[i]
@@ -235,53 +239,27 @@ plt <- aggres %>%
 
 
 # Plot.
-ggplot(plt %>% filter(!naive)) +
-  geom_line(aes(x = n, y = rmse, colour = model, linetype = model), lwd = 0.25) +
-  geom_errorbar(aes(x = n, ymin = rmse_low, max = rmse_high, colour = model), width = 5, position = position_dodge(width = 2.5), show.legend = FALSE, lwd = 0.25) +
-  geom_text(aes(x = n, y = ystar, label = star, colour = model), show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2", breaks = params$model, labels = params$label) +
-  scale_linetype_discrete(breaks = params$model, labels = params$label) +
-  scale_x_continuous(breaks = c(0, nseq)) +
-  scale_y_continuous(trans = "log10") +
-  facet_grid(r2~bandwidth) +
-  labs(x = "Sample size",
-       y = "RMSE",
-       colour = NULL,
-       linetype = NULL) +
-  theme(legend.position = "right")
+plot_this <- function(naive_, bsize_) {
+  
+  ggplot(plt %>% filter(naive == naive_ & bsize == bsize_)) +
+    geom_line(aes(x = n, y = rmse, colour = model, linetype = model), lwd = 0.25) +
+    geom_errorbar(aes(x = n, ymin = rmse_low, max = rmse_high, colour = model), width = 5, position = position_dodge(width = 2.5), show.legend = FALSE, lwd = 0.25) +
+    geom_text(aes(x = n, y = ystar, label = star, colour = model), show.legend = FALSE) +
+    scale_colour_brewer(palette = "Dark2", breaks = params$model, labels = params$label) +
+    scale_linetype_discrete(breaks = params$model, labels = params$label) +
+    scale_x_continuous(breaks = c(0, nseq)) +
+    scale_y_continuous(trans = "log10") +
+    facet_grid(r2~bandwidth) +
+    labs(x = "Sample size",
+         y = "RMSE",
+         colour = NULL,
+         linetype = NULL) +
+    theme(legend.position = "right")
+  
+  ggsave(sprintf("Figure_ActiveSampling_Naive%s_Bsize%d.png", naive_, bsize_), width = 120, height = 200, unit = "mm", dpi = 1000)
+}
 
-ggplot(plt %>% filter(!naive)) +
-  geom_line(aes(x = n, y = rmse, colour = model, linetype = model), lwd = 0.25) +
-  geom_errorbar(aes(x = n, ymin = rmse_low, max = rmse_high, colour = model), width = 5, position = position_dodge(width = 2.5), show.legend = FALSE, lwd = 0.25) +
-  geom_text(aes(x = n, y = ystar, label = star, colour = model), show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2", breaks = params$model, labels = params$label) +
-  scale_linetype_discrete(breaks = params$model, labels = params$label) +
-  scale_x_continuous(breaks = c(0, nseq)) +
-  scale_y_continuous(trans = "log10") +
-  facet_grid(r2~bandwidth) +
-  labs(x = "Sample size",
-       y = "RMSE",
-       colour = NULL,
-       linetype = NULL) +
-  theme(legend.position = "right")
-
-ggsave("Figure_ActiveSampling1.png", width = 120, height = 60, unit = "mm", dpi = 1000)
-
-# # Naive. 
-ggplot(plt %>% filter(naive)) +
-  geom_line(aes(x = n, y = rmse, colour = model, linetype = model), lwd = 0.25) +
-  geom_errorbar(aes(x = n, ymin = rmse_low, max = rmse_high, colour = model), width = 5, position = position_dodge(width = 2.5), show.legend = FALSE, lwd = 0.25) +
-  geom_text(aes(x = n, y = ystar, label = star, colour = model), show.legend = FALSE) +
-  scale_colour_brewer(palette = "Dark2", breaks = params$model, labels = params$label) +
-  scale_linetype_discrete(breaks = params$model, labels = params$label) +
-  scale_x_continuous(breaks = c(0, nseq)) +
-  scale_y_continuous(trans = "log10") +
-  facet_grid(r2~bandwidth) +
-  labs(x = "Sample size",
-       y = "RMSE",
-       colour = NULL,
-       linetype = NULL) +
-  theme(legend.position = "right")
-# 
-# # Save.
-# ggsave("Figure_ActiveSampling2.png", width = 120, height = 60, unit = "mm", dpi = 1000)
+plot_this(TRUE, 10)
+plot_this(TRUE, 50)
+plot_this(FALSE, 10)
+plot_this(FALSE, 50)
