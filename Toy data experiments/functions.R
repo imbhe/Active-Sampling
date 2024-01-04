@@ -89,9 +89,9 @@ get_rsquared <- function(object, data) {
 
 # Active sampling.
 active_sampling <- function(data, 
-                            niter = 10, 
-                            ninit = 10, 
-                            bsize = 10, 
+                            niter = 4, 
+                            ninit = 25, 
+                            bsize = 25, 
                             model = c("const", "lm", "gam", "gbt", "gpr", "rf"), 
                             naive = FALSE, 
                             verbose = FALSE) {
@@ -103,7 +103,7 @@ active_sampling <- function(data,
   nseq <- c(ninit, rep(bsize, niter - 1))
   cum_nseq <- cumsum(nseq)
   ground_truth <- mean(data$y)
-  est <- sqerr <- rsq <- sdsize <- sdw <- rep(NA, ninit)
+  est <- sqerr <- rep(NA, niter)
   
   for ( i in 1:niter ) {
     
@@ -119,9 +119,9 @@ active_sampling <- function(data,
         fit <- safe_train(labelled, "lm")
         if (verbose) cat("Training step failed. Train linear model instead.\n")
       }    
-      tmprsq <- get_rsquared(fit, labelled)
-      rsq[i] <- tmprsq
-      if (verbose)  cat(sprintf("Prediction RMSE = %.2f, R-squared = %.2f.\n", get_rmse(fit), tmprsq))
+      if (verbose)  cat(sprintf("Prediction RMSE = %.2f, R-squared = %.2f.\n", 
+                                get_rmse(fit), 
+                                get_rsquared(fit, labelled)))
       
       # Predict. 
       sigma <-  get_rmse(fit)
@@ -148,15 +148,18 @@ active_sampling <- function(data,
     }
     if (verbose) cat(sprintf("n current = %d, n total = %d.\n", n, cum_nseq[i]))
     
-    # Use simple random sampling until at least 5 observations are available. 
-    if ( is.null(labelled) ) { 
-      size <- rep(1, N) # Uniform. 
+    if ( is.null(labelled) ) { # If no observations have been selected: use simple random sampling.
+      size <- rep(1, N) 
     } else { 
       size <- sqrt((pred - tmpest)^2 + sigma^2) # Probability proportional to size. 
     }
-    sdsize[i] <- sd(size)
     
-    # Retrieve data. 
+    # To avoid zero or undefined sampling probabilities.
+    if  ( any(is.na(size)) | any(size == 0) ) {
+      size <- rep(1, N)
+    }
+
+    # Sample new instances. 
     prob <- size / sum(size)
     nhits <- rmultinom(n = 1, size = n, prob = size)
     ix <- which(nhits > 0)
@@ -171,8 +174,7 @@ active_sampling <- function(data,
       rewt <- cum_nseq[i - 1] / cum_nseq[i]
       labelled$w <- labelled$w * rewt
     }
-    sdw[i] <- sd(labelled$w)
-    
+
     # Add to labelled dataset.
     labelled <- rbind(labelled, new_sample)
     if ( verbose ) {
@@ -194,10 +196,7 @@ active_sampling <- function(data,
   
   res <- data.frame(n = cum_nseq, 
                     est = est, 
-                    sqerr = sqerr, 
-                    rsq = rsq, 
-                    sdsize = sdsize, 
-                    sdw = sdw)
+                    sqerr = sqerr)
   
   return(res)
 }
