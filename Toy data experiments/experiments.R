@@ -40,7 +40,7 @@ theme_update(axis.text = element_text(size = ptsize, colour = "black", family = 
              legend.key.width = unit(1, "cm"),
              legend.text = element_text(size = ptsize, colour = "black", family = "serif"),
              legend.title = element_text(size = ptsize, colour = "black", family = "serif"),
-             strip.background.x = element_blank(),
+             strip.background = element_blank(),
              strip.text = element_text(size = ptsize, colour = "black", family = "serif"),
              panel.border = element_blank(),
              panel.grid = element_blank(),  
@@ -67,18 +67,18 @@ cat("\14")
 
 # Set parameters.
 N <- 1e3
-nreps <- 1e4
+nreps <- 1e2
 ninit <- 50
 bsize <- 50
 niter <- 5
-params <- tibble(model = c("const", "lm", "gam", "rf"), # "gbt", "gpr", # 
-                 label = c("SRS", "Linear", "Thin plate spline", "Random forest"))  %>% # "Gradient boosting tree", "Gaussian process regression", 
+params <- tibble(model = c("const", "lm", "gam"), #, "rf", "gbt", "gpr"),  
+                 label = c("SRS", "Linear", "Thin plate spline")) %>% #, "Random forest", "Gradient boosting tree", "Gaussian process regression")) %>% 
   crossing(naive = c(TRUE, FALSE), 
-           bandwidth = c(0.1, 10),
-           r2 = c(0.5, 0.9)) 
+           bandwidth = c(0.1, 0.32, 1, 10), # Highly non-linear, non-linear, polynomial, roughly linear.
+           r2 = c(0.1, 0.4, 0.7, 0.9, 0.95)^2) # Very weak, weak, moderate, strong, very strong.
 
 # Simulate data.
-set.seed(7083974) # For reproducibility. 
+# set.seed(7083974) # For reproducibility. 
 r2_seq <- unique(params$r2)
 bandwidth_seq <- unique(params$bandwidth)
 for ( i in seq_along(r2_seq) ) {
@@ -250,23 +250,38 @@ ggplot(plt %>% filter(!naive)) +
        linetype = NULL) +
   theme(legend.position = "right")
 
+ggplot(plt %>% filter(!naive)) +
+  geom_line(aes(x = n, y = rmse, colour = model, linetype = model), lwd = 0.25) +
+  geom_errorbar(aes(x = n, ymin = rmse_low, max = rmse_high, colour = model), width = 5, position = position_dodge(width = 2.5), show.legend = FALSE, lwd = 0.25) +
+  geom_text(aes(x = n, y = ystar, label = star, colour = model), show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2", breaks = params$model, labels = params$label) +
+  scale_linetype_discrete(breaks = params$model, labels = params$label) +
+  scale_x_continuous(breaks = c(0, nseq)) +
+  scale_y_continuous(trans = "log10") +
+  facet_grid(r2~bandwidth) +
+  labs(x = "Sample size",
+       y = "RMSE",
+       colour = NULL,
+       linetype = NULL) +
+  theme(legend.position = "right")
+
 ggsave("Figure_ActiveSampling1.png", width = 120, height = 60, unit = "mm", dpi = 1000)
 
 # # Naive. 
-# ggplot(plt %>% filter(!naive)) +
-#   geom_line(aes(x = n, y = rmse, colour = model, linetype = model), lwd = 0.25) +
-#   geom_errorbar(aes(x = n, ymin = rmse_low, max = rmse_high, colour = model), width = 5, position = position_dodge(width = 2.5), show.legend = FALSE, lwd = 0.25) +
-#   geom_text(aes(x = n, y = ystar, label = star, colour = model), show.legend = FALSE) +
-#   scale_colour_brewer(palette = "Dark2", breaks = params$model, labels = params$label) +
-#   scale_linetype_discrete(breaks = params$model, labels = params$label) +
-#   scale_x_continuous(breaks = c(0, nseq)) +
-#   scale_y_continuous(trans = "log10") +
-#   facet_grid(r2~bandwidth) +
-#   labs(x = "Sample size",
-#        y = "RMSE",
-#        colour = NULL,
-#        linetype = NULL) +
-#   theme(legend.position = "right")
+ggplot(plt %>% filter(naive)) +
+  geom_line(aes(x = n, y = rmse, colour = model, linetype = model), lwd = 0.25) +
+  geom_errorbar(aes(x = n, ymin = rmse_low, max = rmse_high, colour = model), width = 5, position = position_dodge(width = 2.5), show.legend = FALSE, lwd = 0.25) +
+  geom_text(aes(x = n, y = ystar, label = star, colour = model), show.legend = FALSE) +
+  scale_colour_brewer(palette = "Dark2", breaks = params$model, labels = params$label) +
+  scale_linetype_discrete(breaks = params$model, labels = params$label) +
+  scale_x_continuous(breaks = c(0, nseq)) +
+  scale_y_continuous(trans = "log10") +
+  facet_grid(r2~bandwidth) +
+  labs(x = "Sample size",
+       y = "RMSE",
+       colour = NULL,
+       linetype = NULL) +
+  theme(legend.position = "right")
 # 
 # # Save.
 # ggsave("Figure_ActiveSampling2.png", width = 120, height = 60, unit = "mm", dpi = 1000)

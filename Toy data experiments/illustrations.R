@@ -76,22 +76,20 @@ for ( i in seq_along(bseq) ) {
 
 ggplot(alldta) + 
   geom_line(aes(x = z, y = yhat, colour = as.factor(rep), linetype = as.factor(rep)), lwd = 1) + 
-  facet_wrap(~bandwidth, scales = "free", labeller = labeller(bandwidth = c(`0.10` = "Highly non-linear",
-                                                                            `0.32`  = "Non-linear",
-                                                                            `1.00` = "Polynomial",
-                                                                            `10.00` = "Roughly linear"))) + 
+  facet_wrap(~bandwidth, labeller = labeller(bandwidth = c(`0.10` = "Highly non-linear (sigma = 0.1)",
+                                                           `0.32`  = "Non-linear (sigma = 0.32)",
+                                                           `1.00` = "Polynomial  (sigma = 1)",
+                                                           `10.00` = "Roughly linear (sigma = 10)"))) + 
   scale_color_brewer(palette = "Dark2") +
   labs(x = "z", 
        y = expression(hat(y))) + 
-  theme(axis.ticks = element_blank(),
-        axis.text = element_blank(),
-        legend.position = "none")
+  theme(legend.position = "none")
 
 ggsave("Figure_Nonlinear.png", width = 160, height = 120, unit = "mm", dpi = 1000)
 
 
 
-# Plot realisation, varying signal to noise ratio -------------------------
+# Plot realization, varying signal to noise ratio -------------------------
 
 set.seed(1234) # For reproducibility. 
 alldta <- NULL

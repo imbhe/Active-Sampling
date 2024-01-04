@@ -13,6 +13,12 @@ sim_data <- function(N = 1e2, r2 = 0.9, bandwidth = 0.1) {
   yhat <- mvrnorm(mu = rep(0, times = N), Sigma = K)
   yhat <- (yhat - mean(yhat)) / sd(yhat) * r
   y <- yhat + rnorm(N, sd = sqrt(1 - r^2))
+  
+  # Standardize to unit variance and support on positive real line. 
+  yhat <- (yhat - min(y)) / sd(y)
+  y <- (y - min(y) + 0.1) / sd(y) 
+  
+  # Return.
   return(data.frame(z, yhat, y))
 }
 
@@ -151,7 +157,7 @@ active_sampling <- function(data,
     if ( is.null(labelled) ) { # If no observations have been selected: use simple random sampling.
       size <- rep(1, N) 
     } else { 
-      size <- sqrt((pred - tmpest)^2 + sigma^2) # Probability proportional to size. 
+      size <- sqrt(pred^2 + sigma^2) # Probability proportional to size. 
     }
     
     # To avoid zero or undefined sampling probabilities.
@@ -186,7 +192,7 @@ active_sampling <- function(data,
     }
     
     # Estimate.
-    tmpest <- with(labelled, sum(w * y) / sum(w))
+    tmpest <- with(labelled, sum(w * y) / N)
     tmpsqerr <- (tmpest - ground_truth)^2
     est[i] <- tmpest
     sqerr[i] <- tmpsqerr
