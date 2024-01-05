@@ -56,18 +56,18 @@ update_geom_defaults("text", list(size = ptsize / ggplot2:::.pt))
 
 load("Toy example illustration/data.R")
 df %<>% 
-  filter(caseID == 22 & eoff <= 2) %>% 
+  filter(caseID == 22 & eoff <= 1) %>% 
   mutate(caseID = as.numeric(caseID)) %>% 
   gather(impact_speed0, impact_speed1, key = "scenario", value = impact_speed)
 
 ggplot(df) + 
-  geom_rect(aes(xmin = eoff - 0.05, xmax = eoff + 0.05, ymin = -acc - 0.25, ymax = -acc + 0.25, fill = impact_speed)) +
+  geom_rect(aes(xmin = -acc - 0.25, xmax = -acc + 0.25, ymin = eoff - 0.05, ymax = eoff + 0.05, fill = impact_speed)) +
   facet_wrap(~scenario, 
              labeller = labeller(scenario = c(impact_speed0 = "Baseline manual driving scenario", 
                                               impact_speed1 = "With automatic emergency braking system"))) + 
   scale_fill_continuous(type = "viridis") +
-  labs(x = "Off-road glance duration (s)",
-       y = bquote('Maximal deceleration '(km/s^2)),
+  labs(x = bquote('Maximal deceleration '(km/s^2)),
+       y = "Off-road glance duration (s)",
        fill = "Impact speed (km/h)") 
 
 ggsave("Toy example illustration/toy example illustration.png", dpi = 1000, width = 159, height = 60, unit = "mm")
