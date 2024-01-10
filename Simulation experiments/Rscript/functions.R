@@ -142,8 +142,8 @@ active_sampling <- function(data, # Input dataset.
       
       # Predict. 
       sigma <-  get_rmse(fit)
-      if ( is.na(sigma) ) {
-        if (verbose) cat("Unreliable fit, prediction RMSE = NA. Constant predictions used instead.\n")
+      if ( is.na(sigma) | is.infinite(sigma) ) {
+        if (verbose) cat("Unreliable fit, prediction RMSE = NA or Inf. Constant predictions used instead.\n")
         pred <- rep(tmpest, N) + 1
         sigma <- 0
       } else {
@@ -165,6 +165,7 @@ active_sampling <- function(data, # Input dataset.
     }
     if (verbose) cat(sprintf("n current = %d, n total = %d.\n", n, cum_nseq[i]))
     
+    # To calculate optimal sampling scheme.
     if ( is.null(labelled) ) { # If no observations have been selected: use simple random sampling.
       size <- rep(1, N) 
     } else { 

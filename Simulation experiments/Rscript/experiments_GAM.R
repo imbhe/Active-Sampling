@@ -40,7 +40,7 @@ rm(nmax)
 
 
 # Experiments.
-for ( i in 1:nrow(params) ) {
+for ( i in 321:nrow(params) ) {
   
   # Extract bandwidth and R2 of true signal from filename. 
   file <- unlist(params$datafile[i])

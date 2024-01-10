@@ -14,6 +14,7 @@ source("Simulation experiments/Rscript/functions.R")
 
 # Load packages
 library("MASS")
+library("stringr")
 
 # Set parameters. 
 N <- 1e3
@@ -36,10 +37,10 @@ for ( i in seq_along(bandwidth) ) {
                       normalization = normalization[k]) 
       
       # Plot. 
-      png(sprintf("Simulation experiments/Data/SimData_Bandwidth_%.2f_R2_%.2f_%s.png", bandwidth[i], r2[j], str_replace(normalization[k], " ", "_")), width = 640, height = 480, unit = "px")
-      plot(dta$z, dta$y, bty = "l", main = sprintf("sigma = %.2f, r2 = %.2f, ", bandwidth[i], r2[j]))
-      lines(dta$z, dta$yhat)
-      dev.off()
+      # png(sprintf("Simulation experiments/Data/SimData_Bandwidth_%.2f_R2_%.2f_%s.png", bandwidth[i], r2[j], str_replace(normalization[k], " ", "_")), width = 640, height = 480, unit = "px")
+      # plot(dta$z, dta$y, bty = "l", main = sprintf("sigma = %.2f, r2 = %.2f, ", bandwidth[i], r2[j]))
+      # lines(dta$z, dta$yhat)
+      # dev.off()
       
       # Drop column yhat.
       dta$yhat <- NULL 
