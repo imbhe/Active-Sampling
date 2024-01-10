@@ -26,17 +26,19 @@ theme_set(theme_bw())
 theme_update(axis.text = element_text(size = ptsize, colour = "black", family = "serif"),
              axis.line = element_line(colour = "black", linewidth = 0.25), 
              axis.ticks = element_line(colour = "black", linewidth = 0.25), 
-             axis.title.y = element_text(margin = margin(t = 0, r = 0.0, b = 0, l = 0.2, unit = 'cm')),
+             axis.title.y = element_text(margin = margin(t = 0, r = 0.2, b = 0, l = 0, unit = 'cm')),
              legend.key.width = unit(1, "cm"),
              legend.key.height = unit(0.5, "cm"),
              legend.text = element_text(size = ptsize, colour = "black", family = "serif"),
              legend.title = element_text(size = ptsize, colour = "black", family = "serif"),
+             legend.position = "bottom",
              strip.background = element_blank(),
              strip.text = element_text(size = ptsize, colour = "black", family = "serif"),
              panel.border = element_blank(),
+             panel.spacing.x = unit(0.3, "cm"),
+             panel.spacing.y = unit(0.3, "cm"),
              panel.grid = element_blank(),  
-             plot.subtitle = element_text(size = ptsize, colour = "black", family = "serif", face = "plain", hjust = 0),
-             plot.title = element_text(size = ptsize, colour = "black", family = "serif", face = "plain", hjust = 0),
+             plot.margin = margin(t = 0, r = 0.2, b = 0, l = 0, unit = 'cm'),
              text = element_text(size = ptsize, colour = "black", family = "serif"))
 
 update_geom_defaults("line", list(linewidth = 1))
@@ -46,51 +48,39 @@ update_geom_defaults("text", list(size = ptsize / .pt, family = "serif"))
 rm(ptsize)
 
 
-# Load functions ----------------------------------------------------------
 
-source("Simulation experiments/Rscript/functions.R")
+# Plot examples of simulated datasets  ------------------------
 
+rm(list = ls())
+params <- crossing(bandwidth = c(0.1, 1, 10),
+                   r2 = 0.75)
 
-# Plot mean trend, varying degree of non-linearity ------------------------
+for ( i in 1:nrow(params) ) {
+  load(sprintf("Simulation experiments/Data/SimData_Bandwidth_%.2f_R2_%.2f_strictly_positive.RData", params$bandwidth[i], params$r2[i]))
 
-# Clean-up.
-rm(list = setdiff(ls(), lsf.str()))
-
-# Parameters. 
-alldta <- NULL
-nreps <- 3
-bseq <- c(10^seq(-1, 0, 0.5), 10)
-
-# Set seed, for reproducibility. 
-set.seed(1234)  
-
-# Simulate data. 
-for ( i in seq_along(bseq) ) {
-  for ( j in 1:nreps ) {
-    dta <- sim_data(bandwidth = bseq[i]) %>% 
-      mutate(bandwidth = sprintf("%.2f", bseq[i]), 
-             rep = j)
-    
-    if ( i == 1 & j == 1 ) {
-      alldta <- dta
-    } else {
-      alldta %<>% add_row(dta)  
-    }
+  dta <- dta[seq(1, 1000, 10), ] %>% 
+    mutate(bandwidth = params$bandwidth[i],
+           r2 = params$r2[i])
+  
+  if (i == 1) {
+    plt <- dta
+  } else {
+    plt %<>% 
+      add_row(dta)
   }
 }
 
-ggplot(alldta) + 
-  geom_line(aes(x = z, y = yhat, colour = as.factor(rep), linetype = as.factor(rep)), lwd = 1) + 
-  facet_wrap(~bandwidth, labeller = labeller(bandwidth = c(`0.10` = "Highly non-linear (σ = 0.1)",
-                                                           `0.32`  = "Non-linear (σ = 0.32)",
-                                                           `1.00` = "Polynomial  (σ = 1)",
-                                                           `10.00` = "Roughly linear (σ = 10)"))) + 
-  scale_color_brewer(palette = "Dark2") +
-  labs(x = "z", 
-       y = expression(hat(y))) + 
-  theme(legend.position = "none")
+ggplot(plt, aes(x = z, y = y)) + 
+  geom_point() + 
+  facet_wrap(~bandwidth) + 
+  expand_limits(y = 0) +
+  scale_x_continuous(breaks = c(0, 0.5, 1)) + 
+  scale_y_continuous(breaks = c(0, 2.5, 5)) + 
+  facet_wrap(~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "Non-linear (σ = 0.1)",
+                                                           `1` = "Polynomial  (σ = 1)",
+                                                           `10` = "Linear (σ = 10)"))) 
 
-ggsave("Simulation experiments/Figures/example_simulated_data.png", width = 160, height = 120, unit = "mm", dpi = 1000)
+ggsave("Simulation experiments/Figures/example_simulated_data.png", width = 160, height = 60, unit = "mm", dpi = 1000)
 
 
 
@@ -184,10 +174,6 @@ for ( i in 1:nrow(params) ) {
   }
 }
 
-#   mutate(star = ifelse(pval < 0.05, "*", ""),
-#          model_num = as.numeric(factor(model, levels = unique(params$model))),
-#          ystar = max(rmse_high) - (max(rmse_high) - min(rmse_low)) * model_num * 0.025)
-
 
 # Plot results.
 plot_this <- function(bsize_, naive_, estimator_, normalization_) {
@@ -201,55 +187,57 @@ plot_this <- function(bsize_, naive_, estimator_, normalization_) {
     geom_line(aes(y = rmse)) +
     geom_text(aes(y = ystar, label = star), show.legend = FALSE) + 
     facet_grid(bandwidth ~ r2) + 
-    scale_colour_brewer(palette = "Dark2", breaks = models, label = labels) +
-    scale_fill_brewer(palette = "Dark2", breaks = models, label = labels) +
-    scale_linetype_discrete(breaks = models, label = labels) +
+    scale_colour_brewer(palette = "Dark2", breaks = breaks, label = labels) +
+    scale_fill_brewer(palette = "Dark2", breaks = breaks, label = labels) +
+    scale_linetype_discrete(breaks = breaks, label = labels) +
     scale_y_continuous(trans = "log10") +
-    facet_grid(r2~bandwidth, scales = "free", labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
-                                                                                `1` = "σ = 1", 
-                                                                                `10` = "σ = 10"),
-                                                                  r2 = c(`0.1` = "R2 = 0.10", 
-                                                                         `0.5` = "R2 = 0.50", 
-                                                                         `0.75` = "R2 = 0.75", 
-                                                                         `0.9` = "R2 = 0.90"))) +
-    labs(x = "Sample size",
-         y = "RMSE",
+    facet_grid(r2~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
+                                                               `1` = "σ = 1", 
+                                                               `10` = "σ = 10"),
+                                                 r2 = c(`0.1` = "R2 = 0.10", 
+                                                        `0.5` = "R2 = 0.50", 
+                                                        `0.75` = "R2 = 0.75", 
+                                                        `0.9` = "R2 = 0.90"))) +
+    labs(x = "Total sample size",
+         y = expression(paste("RMSE of ", hat(theta))),
          colour = NULL,
          fill = NULL,
-         linetype = NULL) +
-    theme(legend.position = "bottom")  
+         linetype = NULL) 
   
   ggsave(sprintf("Simulation experiments/Figures/Results_Naive_%s_Batchsize_%s_Estimator_%s_Normalization_%s.png", 
                  naive_, bsize_, estimator_, normalization_), 
          width = 160, height = 150, unit = "mm", dpi = 1000)
 }
 
-models <- c("const", "lm", "gam")
-labels <- c("SRS", "LM", "GAM")
+breaks <- c("const", "lm", "gam")
+labels <- c("SRS", "AS+LM", "AS+GAM")
 
 # There was a substantial performance gain with active sampling already at small samples.
 # The performance gain increased with the signal-to-noise ratio. 
-# In the linear case (y_i linearly related to z_i) there was a slight low of efficiency when applying flexible surrogate model, as compared to a linear model. 
-# Importantly, the performance of active sampling was never worse than simple random sampling, even for a misspecified model. 
+# In the linear case (y_i linearly related to z_i) there was a slight loss of efficiency 
+# when applying flexible surrogate model, as compared to a linear model. 
+# Importantly, the performance of active sampling was never worse than simple random sampling, 
+# even for a misspecified model. 
 plot_this(10, FALSE, "default", "strictly_positive") 
 
 # In contrast, a naive implementation of the active sampling algorithm resulted in worse performance 
-# compared to simple random sampling, particularly in low signal-to-noise ratio settings, non-positive data, and for misspecified models.  
+# compared to simple random sampling, particularly in low signal-to-noise ratio settings, 
+# non-positive data, and for misspecified models.  
 plot_this(10, TRUE, "Hajek", "zero_mean")  
 plot_this(10, TRUE, "default", "strictly_positive") 
 
-# The performance gain was somewhat smaller and when the study variable attained both positive and negative values 
-# and when a non-linear estimator was used. 
+# The performance gain was somewhat smaller and when the study variable attained 
+# both positive and negative values and when a non-linear estimator was used. 
 plot_this(10, FALSE, "default", "zero_mean") 
 plot_this(10, FALSE, "Hajek", "zero_mean") 
 
 
-
+# Effect of batch size on performance. 
 plot_this <- function(naive_, estimator_, normalization_, model_) {
   allres %>% 
-    filter(bandwidth %in% c(0.1, 1, 10) & r2 %in% c(0.5, 0.75, 0.90)) %>% 
+    filter(bandwidth %in% c(0.1, 1, 10) & r2 %in% c(0.1, 0.5, 0.75, 0.90)) %>% 
     filter(naive == naive_ & estimator == estimator_ & normalization == normalization_ & (model == model_ | (model == "const" & bsize == 10))) %>% 
-    mutate(group = paste(bsize, model),
+    mutate(group = paste(model, bsize),
            group_num = as.numeric(factor(group, levels = unique(group))),
            ystar = max(rmse_high) + (max(rmse_high) - min(rmse_low)) * group_num * 0.025) %>% 
     ggplot(aes(x = n, color = group, fill = group, linetype = group)) +
@@ -257,28 +245,31 @@ plot_this <- function(naive_, estimator_, normalization_, model_) {
     geom_line(aes(y = rmse)) +
     geom_text(aes(y = ystar, label = star), show.legend = FALSE) + 
     facet_grid(bandwidth ~ r2) + 
-    scale_colour_brewer(palette = "Dark2") +
-    scale_fill_brewer(palette = "Dark2") +
-    scale_linetype_discrete() +
+    scale_colour_brewer(palette = "Dark2", breaks = breaks, label = labels) +
+    scale_fill_brewer(palette = "Dark2", breaks = breaks, label = labels) +
+    scale_linetype_discrete(breaks = breaks, label = labels) +
     scale_y_continuous(trans = "log10") +
-    facet_grid(r2~bandwidth, scales = "free", labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
-                                                                                `1` = "σ = 1", 
-                                                                                `10` = "σ = 10"),
-                                                                  r2 = c(`0.1` = "R2 = 0.10", 
-                                                                         `0.5` = "R2 = 0.50", 
-                                                                         `0.75` = "R2 = 0.75", 
-                                                                         `0.9` = "R2 = 0.90"))) +
-    labs(x = "Sample size",
-         y = "RMSE",
+    facet_grid(r2~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
+                                                               `1` = "σ = 1", 
+                                                               `10` = "σ = 10"),
+                                                 r2 = c(`0.1` = "R2 = 0.10", 
+                                                        `0.5` = "R2 = 0.50", 
+                                                        `0.75` = "R2 = 0.75", 
+                                                        `0.9` = "R2 = 0.90"))) +
+    labs(x = "Total sample size",
+         y = expression(paste("RMSE of ", hat(theta))),
          colour = NULL,
          fill = NULL,
-         linetype = NULL) +
-    theme(legend.position = "bottom")  
+         linetype = NULL) 
   
   ggsave(sprintf("Simulation experiments/Figures/Results_Naive_%s_Estimator_%s_Normalization_%s_Model_%s.png", 
                  naive_, estimator_, normalization_, model_), 
          width = 160, height = 150, unit = "mm", dpi = 1000)
 }
 
-# Better performance was observed with a small batch size but difference were attenuated as the sample size increased.  
+breaks <- c("const 10", "gam 10", "gam 50")
+labels <- c("SRS", "AS, batch size = 10", "AS, batch size = 50")
+
+# Better performance was observed with a small batch size but difference were 
+# attenuated as the sample size increased.  
 plot_this(FALSE, "default", "strictly_positive", "gam")

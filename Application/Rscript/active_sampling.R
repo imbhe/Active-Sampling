@@ -131,12 +131,12 @@ active_sampling <- function(data,
   
   # Load helper functions. ----
   
-  source("Rscript/calculate_sampling_scheme.R")
-  source("Rscript/estimate_targets.R")
-  source("Rscript/estimate_totals.R")
-  source("Rscript/initialise_grid.R")
-  source("Rscript/safe_caret_train.R")
-  source("Rscript/update_predictions.R")
+  source("Application/Rscript/calculate_sampling_scheme.R")
+  source("Application/Rscript/estimate_targets.R")
+  source("Application/Rscript/estimate_totals.R")
+  source("Application/Rscript/initialise_grid.R")
+  source("Application/Rscript/safe_caret_train.R")
+  source("Application/Rscript/update_predictions.R")
   
   
   # Set some parameters. ----
@@ -227,7 +227,7 @@ active_sampling <- function(data,
             legend.key.width = unit(2, "cm")) +
       guides(colour = guide_colourbar(title.position = "top", title.hjust = 0.5))
     
-    filename <- sprintf("Output/BaselinImpactSpeed_1D.png")
+    filename <- sprintf("Application/Figures/BaselinImpactSpeed_1D.png")
     ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
     
     # 2D.
@@ -249,7 +249,7 @@ active_sampling <- function(data,
             legend.key.width = unit(2, "cm")) +
       guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
     
-    filename <- sprintf("Output/BaselinImpactSpeed_2D.png")
+    filename <- sprintf("Application/Figures/BaselinImpactSpeed_2D.png")
     ggsave(filename, width = 160, height = 100, unit = "mm", dpi = 1000)
   }
   
@@ -352,7 +352,7 @@ active_sampling <- function(data,
               legend.key.width = unit(2, "cm")) +
         guides(fill = guide_colourbar(title.position = "top", title.hjust = 0.5))
       
-      filename <- sprintf("Output/ActiveSamplingScheme_%s_%s_2D_Iter%d.png", 
+      filename <- sprintf("Application/Figures/ActiveSamplingScheme_%s_%s_2D_Iter%d.png", 
                           target %>% str_to_title() %>% str_remove_all(" "), 
                           opt_method %>% str_to_title() %>% str_remove_all(" "), 
                           i)
@@ -379,7 +379,7 @@ active_sampling <- function(data,
               legend.key.width = unit(2, "cm")) +
         guides(colour = guide_colourbar(title.position = "top", title.hjust = 0.5))
       
-      filename <- sprintf("Output/ActiveSamplingScheme_%s_%s_1D_Iter%d.png", 
+      filename <- sprintf("Application/Figures/ActiveSamplingScheme_%s_%s_1D_Iter%d.png", 
                           target %>% str_to_title() %>% str_remove_all(" "), 
                           opt_method %>% str_to_title() %>% str_remove_all(" "), 
                           i)
@@ -444,6 +444,13 @@ active_sampling <- function(data,
       se_mart <- rep(NA, 2)
     }
     
+    # Small sample (few iterations) correction. 
+    if ( i > 1 ) {
+      se_mart_corr <- se_mart * i / (i - 1)
+    } else {
+      se_mart_corr <- rep(NA, 2)
+    }
+    
     
     # Variance estimation using classical survey sampling method (Sen-Yates-Grundy estimator). ----
     Y <- new_sample %>% 
@@ -484,6 +491,8 @@ active_sampling <- function(data,
     # Confidence intervals.
     lower_mart <- est - qnorm(0.975) * se_mart 
     upper_mart <- est + qnorm(0.975) * se_mart
+    lower_mart_corr <- est - qnorm(0.975) * se_mart_corr 
+    upper_mart_corr <- est + qnorm(0.975) * se_mart_corr
     lower_classic <- est - qnorm(0.975) * se_classic 
     upper_classic <- est + qnorm(0.975) * se_classic
     lower_boot <- est - qnorm(0.975) * se_boot 
@@ -491,6 +500,7 @@ active_sampling <- function(data,
     
     # Confidence intervals cover true value?
     cov_mart <- as.numeric(lower_mart < ground_truth & ground_truth < upper_mart)
+    cov_mart_corr <- as.numeric(lower_mart_corr < ground_truth & ground_truth < upper_mart_corr)
     cov_classic <- as.numeric(lower_classic < ground_truth & ground_truth < upper_classic)
     cov_boot <- as.numeric(lower_boot < ground_truth & ground_truth < upper_boot)
     
@@ -505,9 +515,11 @@ active_sampling <- function(data,
     
     # Add names.
     names(se_mart) <- paste0(names(est), "_se_mart")
+    names(se_mart_corr) <- paste0(names(est), "_se_mart_corr")
     names(se_classic) <- paste0(names(est), "_se_classic")
     names(se_boot) <- paste0(names(est), "_se_boot")
     names(cov_mart) <- paste0(names(est), "_ci_cover_mart")
+    names(cov_mart_corr) <- paste0(names(est), "_ci_cover_mart_corr")
     names(cov_classic) <- paste0(names(est), "_ci_cover_classic")
     names(cov_boot) <- paste0(names(est), "_ci_cover_boot")
     names(sqerr) <- paste0(names(est), "_sqerr")
@@ -523,9 +535,11 @@ active_sampling <- function(data,
       add_column(as_tibble(as.list(est))) %>% # Estimates.
       add_column(as_tibble(as.list(sqerr))) %>% # Squared errors.
       add_column(as_tibble(as.list(se_mart)))  %>% # Standard errors.
+      add_column(as_tibble(as.list(se_mart_corr)))  %>% 
       add_column(as_tibble(as.list(se_classic)))  %>% 
       add_column(as_tibble(as.list(se_boot)))  %>% 
       add_column(as_tibble(as.list(cov_mart))) %>% # Confidence interval coverage.
+      add_column(as_tibble(as.list(cov_mart_corr))) %>% 
       add_column(as_tibble(as.list(cov_classic))) %>% 
       add_column(as_tibble(as.list(cov_boot))) %>% 
       add_column(r2_tbl) # Prediction R-squared and accuracy.
