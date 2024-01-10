@@ -35,12 +35,14 @@ sim_data <- function(N = 1e2, bandwidth = 0.1, r2 = 0.9, normalization = c("zero
 }
 
 # Train prediction model. 
-train <- function(data, method = c("const", "lm", "gam", "gbt", "gpr", "rf")) {
+train <- function(data, method = c("const", "pps", "lm", "gam", "gbt", "gpr", "rf")) {
   
   method <- match.arg(method)
 
   if ( method == "const") {   
     mod <- lm(y ~ 1, data = data)
+  } else if ( method == "pps") {   
+    mod <- lm(y ~ -1 + z, data = data)
   } else if ( method == "lm") {   
     mod <- lm(y ~ z, data = data)
   } else if ( method == "gam" ) { 
@@ -110,9 +112,9 @@ active_sampling <- function(data, # Input dataset.
                             niter = 4, # Number of iterations. 
                             ninit = 25, # Initial sample size. 
                             bsize = 25, # Batch size.
-                            model = c("const", "lm", "gam", "gbt", "gpr", "rf"), 
-                            naive = FALSE, 
-                            estimator = c("default", "Hajek"), # Estimator for the mean.
+                            model = c("const", "pps", "lm", "gam", "gbt", "gpr", "rf"), # Surrogate model. 
+                            naive = FALSE, # Naive implementation of active sampling? Ignores prediction uncertainty if this is TRUE.
+                            estimator = c("default", "Hajek"), # Estimator for the mean. Default (linear) or Hajek (non-linear) estimator. 
                             verbose = FALSE) {
   
   N <- nrow(data)
