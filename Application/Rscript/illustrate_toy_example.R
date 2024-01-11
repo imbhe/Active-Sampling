@@ -18,13 +18,9 @@
 rm(list = ls())
 cat("\14")
 
-# Set working directory. 
-# setwd(getSrcDirectory(function(){})[1]) # If file is sourced. 
-setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # Using RStudio.
 
 # Load packages. ----
 
-library("cowplot")
 library("tidyverse")
 
 
@@ -57,21 +53,20 @@ update_geom_defaults("text", list(size = ptsize / ggplot2:::.pt))
 
 # Prepare data. ----
 
-load("data.R")
+load("Application/Data/data.R")
 df %<>% 
   filter(caseID == 22 & eoff <= 2) %>% 
   mutate(caseID = as.numeric(caseID)) %>% 
-  gather(impact_speed0, impact_speed1, key = "scenario", value = impact_speed) %>% 
-  filter(impact_speed > 0)
+  gather(impact_speed0, impact_speed1, key = "scenario", value = impact_speed) 
 
 ggplot(df) + 
   geom_rect(aes(xmin = -acc - 0.25, xmax = -acc + 0.25, ymin = eoff - 0.05, ymax = eoff + 0.05, fill = impact_speed)) +
   facet_wrap(~scenario, 
              labeller = labeller(scenario = c(impact_speed0 = "Baseline", 
                                               impact_speed1 = "AEB"))) + 
-  scale_fill_continuous(type = "viridis", limits = c(0, max(df$impact_speed))) + 
+  scale_fill_continuous(type = "viridis") + 
   labs(x = bquote('Maximal deceleration '(km/s^2)),
        y = "Off-road glance duration (s)",
        fill = "Impact speed (km/h)") 
 
-ggsave("toy example illustration.png", dpi = 1000, width = 159, height = 60, unit = "mm")
+ggsave("Application/Figures/toy example.png", dpi = 1000, width = 159, height = 60, unit = "mm")

@@ -50,8 +50,8 @@ params3 <- crossing(model = c("rf", "gbt", "gpr"),
 
 # All experiments. 
 params <- params1 %>% 
-  add_row(params2) %>% 
-  add_row(params3) %>% 
+#   add_row(params2) %>% 
+#   add_row(params3) %>% 
   mutate(niter = nmax / bsize) %>% # Number of iterations. 
   crossing(datafile = list.files("Simulation experiments/Data", ".RData")) # Input data sets. 
 
@@ -74,6 +74,9 @@ for ( i in 1:nrow(params) ) {
     
   # To store results. 
   sqerr <- matrix(NA, nrow = nreps, ncol = params$niter[i]) 
+  if ( params$model[i] ==  "const" ) {
+    sqerr_cv <- sqerr_ratio <- matrix(NA, nrow = nreps, ncol = params$niter[i]) 
+  }
   
   # Run repeated subsampling experiments. 
   for ( j in 1:nreps ) {
@@ -89,6 +92,10 @@ for ( i in 1:nrow(params) ) {
     
     # Store results 
     sqerr[j, ] <- res$sqerr
+    if ( params$model[i] ==  "const" ) {
+      sqerr_cv[j, ] <- res$sqerr_cv
+      sqerr_ratio[j, ] <- res$sqerr_ratio
+    }
     
     rm(res)
 
@@ -107,6 +114,13 @@ for ( i in 1:nrow(params) ) {
                 sd_mse = apply(sqerr, 2, sd), # Standard deviation of the MSE.
                 nreps = nreps) # Number of simulations/repetitions.
   
+  if ( params$model[i] == "const" ) {
+    res$mse_cv <- apply(sqerr_cv, 2, mean)
+    res$sd_mse_cv <- apply(sqerr_cv, 2, sd)
+    res$mse_ratio <- apply(sqerr_ratio, 2, mean)
+    res$sd_mse_ratio <- apply(sqerr_ratio, 2, sd)  
+  }
+  
   # Save. 
   save(res, file = sprintf("Simulation experiments/Results/Bandwidth_%s_R2_%s_%s_Model_%s_BatchSize_%s_Naive_%s_estimator_%s.RData", 
                            bandwidth,
@@ -123,4 +137,4 @@ for ( i in 1:nrow(params) ) {
 }
 
 # Clean-up.
-rm(i, j, nreps, params)
+rm(i, j, nreps, params, params1, params2, params3)

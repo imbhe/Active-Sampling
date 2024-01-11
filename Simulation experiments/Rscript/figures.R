@@ -87,15 +87,15 @@ ggsave("Simulation experiments/Figures/example_simulated_data.png", width = 160,
 # All results, generalized additive model --------
 
 # Clean-up.
-rm(list = setdiff(ls(), lsf.str()))
+rm(list = ls())
 
 # Parameters. Make sure corresponding experiments have been executed. 
-params <- tibble(model = c("const", "lm", "gam")) %>% # Auxiliary models. 
-  crossing(bandwidth = c(0.1, 0.32, 1, 10),
-           r2 = c(0.1, 0.25, 0.5, 0.75, 0.9),
+params <- tibble(model = c("const", "pps")) %>% # c("const", "lm", "gam")) %>% # Auxiliary models. 
+  crossing(bandwidth = c(0.1, 1, 10),
+           r2 = c(0.1, 0.5, 0.75, 0.9),
            normalization = c("zero_mean", "strictly_positive"),
-           naive = c(TRUE, FALSE), # Ignore prediction uncertainty (TRUE) or account for prediction uncertainty (FALSE)
-           bsize = c(10, 50), # Small or large batch size. 
+           naive = FALSE, #c(TRUE, FALSE), # Ignore prediction uncertainty (TRUE) or account for prediction uncertainty (FALSE)
+           bsize = 10, #c(10, 50), # Small or large batch size. 
            estimator = c("default", "Hajek")) # Estimator for the finite population mean. 
 
 # Load results.
@@ -125,6 +125,11 @@ for (i in 1:nrow(params) ) {
     allres %<>% 
       add_row(res)
   }
+  
+  # if ( params$model[i] == "const" ) {
+  #   res$model <- "cv"
+  #   res$
+  # }
   
   rm(res)
 }

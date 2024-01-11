@@ -122,7 +122,11 @@ active_sampling <- function(data, # Input dataset.
   nseq <- c(ninit, rep(bsize, niter - 1))
   cum_nseq <- cumsum(nseq)
   ground_truth <- mean(data$y)
-  est <- sqerr <- rep(NA, niter)
+  mean_z <- mean(data$z)
+  sqerr <- rep(NA, niter)
+  if ( model == "const" ) { # If simple random sampling.
+    sqerr_cv <- sqerr_ratio <- rep(NA, niter) # Squared errors of regression (control variate) and ratio estimators.
+  }
   
   for ( i in 1:niter ) {
     
@@ -146,7 +150,7 @@ active_sampling <- function(data, # Input dataset.
       sigma <-  get_rmse(fit)
       if ( is.na(sigma) | is.infinite(sigma) ) {
         if (verbose) cat("Unreliable fit, prediction RMSE = NA or Inf. Constant predictions used instead.\n")
-        pred <- rep(tmpest, N) + 1
+        pred <- rep(est, N) + 1
         sigma <- 0
       } else {
         pred <- my_predict(fit, data)
@@ -174,7 +178,7 @@ active_sampling <- function(data, # Input dataset.
       if ( estimator == "default" ) {
         size <- sqrt(pred^2 + sigma^2) # Probability proportional to size. 
       } else if ( estimator == "Hajek" ) {
-        size <- sqrt((pred - tmpest)^2 + sigma^2) # Probability proportional to size. 
+        size <- sqrt((pred - est)^2 + sigma^2) # Probability proportional to size. 
       }
     }
     
@@ -211,20 +215,35 @@ active_sampling <- function(data, # Input dataset.
     
     # Estimate.
     if ( estimator == "default" ) {
-      tmpest <- with(labelled, sum(w * y) / N)
+      est <- with(labelled, sum(w * y) / N) 
+      est_z <- with(labelled, sum(w * z) / N) 
     } else if ( estimator == "Hajek" ) {
-      tmpest <- with(labelled, sum(w * y) / sum(w))
+      est <- with(labelled, sum(w * y) / sum(w)) 
+      est_z <- with(labelled, sum(w * z) / sum(w)) 
     }
-    tmpsqerr <- (tmpest - ground_truth)^2
-    est[i] <- tmpest
-    sqerr[i] <- tmpsqerr
-    if (verbose) cat(sprintf("Current estimate = %.4f, squared error = %.4f.\n\n", tmpest, tmpsqerr))
+    sqerr[i] <- (est - ground_truth)^2
+
+    # Additional estimators if simple random sample.
+    if ( model == "const" ) {
+      est_cv <- est + (mean_z - est_z) * coef(lm(y~z, data = labelled))[2] # Control-variate estimator.
+      est_ratio <- est / est_z * mean_z # Ratio estimator.
+      sqerr_cv[i] <- (est_cv - ground_truth)^2 # Errors.
+      sqerr_ratio[i] <- (est_ratio - ground_truth)^2 
+      }
+    
+    if (verbose) cat(sprintf("Current estimate = %.4f, squared error = %.4f.\n\n", est, sqerr[i]))
     
   }
   
   res <- data.frame(n = cum_nseq, 
-                    est = est, 
                     sqerr = sqerr)
+  
+  if ( model == "const" ) {
+    res <- data.frame(n = cum_nseq, 
+                      sqerr = sqerr, 
+                      sqerr_cv = sqerr_cv,
+                      sqerr_ratio = sqerr_ratio)
+  }
   
   return(res)
 }
