@@ -10,7 +10,8 @@
 #   - 'acc': minimal acceleration during braking (negative maximal deceleration).
 #   - 'eoff_acc_prob': probability of (eoff, acc) pair according to baseline distribution.
 #   - 'impact_speed0': impact speed in baseline scenario.
-#   - 'impact_speed1': impact speed  in counter factual scenario (i.e., with counter measure such as AEB).                           
+#   - 'impact_speed1': impact speed  in counter factual scenario (i.e., with counter measure such as AEB).
+#   - 'impact_speed_max0': maximal possible impact speed per caseID.
 #
 # sampling_method: simple random sampling, importance sampling, or active sampling.
 #
@@ -50,14 +51,14 @@ active_sampling <- function(data,
                                        "impact speed reduction",
                                        "crash avoidance"),
                             opt_method = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
-                                           "naive", 
-                                           "minimising anticipated variance"),
+                                           "default", 
+                                           "naive"),
                             batch_size = 1,
                             niter = 500, 
                             nboot = 500, 
                             verbose = FALSE, # TRUE or FALSE.
                             plot = FALSE,# TRUE or FALSE.
-                            prediction_model_type) { # "xg_boost" "rg" "knn"
+                            prediction_model_type = c("rg", "xg_boost", "knn")) { # Only used when sampling_method = "active sampling".
   
   
   # Make sure packages are loaded. ----
@@ -68,21 +69,8 @@ active_sampling <- function(data,
   require("stringr")
   require("tidyverse")
   require("xgboost")
+  require("ROSE")
   require("Matrix")
-  
-  
-  # Calculate some variables. ----
-  maximpact <- data %>% 
-    group_by(caseID) %>% 
-    summarise(impact_speed_max0 = max(impact_speed0, na.rm = TRUE), .groups = "keep") %>% 
-    ungroup() %>% 
-    dplyr::select(caseID, impact_speed_max0)
-  
-  data %<>% 
-    mutate(impact_speed_reduction = impact_speed0 - impact_speed1,
-           crash_avoidance = as.numeric( (impact_speed0 > 0) * (impact_speed1 == 0)) ) %>%  
-    dplyr::select(-contains("injury_risk")) %>% 
-    left_join(maximpact, by = "caseID")
   
   
   # Check input parameters. ----
@@ -91,7 +79,8 @@ active_sampling <- function(data,
   proposal_dist <- match.arg(proposal_dist)
   target <- match.arg(target)
   opt_method <- match.arg(opt_method)
-
+  prediction_model_type <- match.arg(prediction_model_type)
+  
   # proposal_dist should be "NA" when sampling_method not equal to "importance sampling".
   if ( sampling_method != "importance sampling" & proposal_dist != "NA") { 
     stop(sprintf('Sampling_method = "%s" and proposal_dist = "%s" not allowed.', 

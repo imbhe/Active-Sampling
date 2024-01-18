@@ -1,9 +1,3 @@
-# Install the ROSE package if it's not already installed
-if (!require("ROSE", character.only = TRUE)) {
-  install.packages("ROSE", dependencies = TRUE)
-}
-library(ROSE)
-
 update_predictions <- function(labelled, 
                                unlabelled, 
                                target = c("impact speed reduction",
@@ -11,10 +5,11 @@ update_predictions <- function(labelled,
                                verbose = FALSE, 
                                plot = FALSE,
                                iter = NA,
-                               prediction_model = prediction_model_type) {
+                               prediction_model_type = c("rg", "xg_boost", "knn")) {
   
   # Check input parameters.
   target <- match.arg(target)
+  prediction_model_type <- match.arg(prediction_model_type)
   
   # Store default handling of warning messages.
   defaultW <- getOption("warn")

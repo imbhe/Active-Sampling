@@ -11,8 +11,8 @@ calculate_sampling_scheme <- function(unlabelled,
                                                  "impact speed reduction",
                                                  "crash avoidance"),
                                       opt_method = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
-                                                     "naive", 
-                                                     "minimise anticipated variance"),
+                                                     "default", 
+                                                     "naive"),
                                       est = NULL,
                                       r2 = NULL) {
 
