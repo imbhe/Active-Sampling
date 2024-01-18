@@ -56,7 +56,8 @@ active_sampling <- function(data,
                             niter = 500, 
                             nboot = 500, 
                             verbose = FALSE, # TRUE or FALSE.
-                            plot = FALSE) { # TRUE or FALSE.
+                            plot = FALSE,# TRUE or FALSE.
+                            prediction_model_type) { # "xg_boost" "rg" "knn"
   
   
   # Make sure packages are loaded. ----
@@ -66,6 +67,8 @@ active_sampling <- function(data,
   require("ranger")
   require("stringr")
   require("tidyverse")
+  require("xgboost")
+  require("Matrix")
   
   
   # Calculate some variables. ----
@@ -284,7 +287,7 @@ active_sampling <- function(data,
       if ( verbose ) { print("Update predictions.") }
       
       # Calculated predictions.
-      pred <- update_predictions(labelled, unlabelled, target, verbose = verbose, plot = plot & i %in% plot_iter, iter = i) 
+      pred <- update_predictions(labelled, unlabelled, target, verbose = verbose, plot = plot & i %in% plot_iter, iter = i, prediction_model = prediction_model_type) 
       
       # Prediction R-squares and accuracies.
       r2 <- list(impact_speed_reduction = pred$r2_impact_speed_reduction,

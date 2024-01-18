@@ -36,7 +36,7 @@ params1 <- crossing(model = c("const", "pps"),
                     bsize = 10, 
                     estimator = c("default", "Hajek")) 
 
-# LM & GAM.
+# LM and GAM.
 params2 <- tibble(model = c("lm", "gam")) %>% # Auxiliary models. 
   crossing(naive = c(TRUE, FALSE), # Naive implementation of active sampling? Ignores prediction if this is TRUE.
            bsize = c(10, 50), # Small or large batch size. 
@@ -50,8 +50,8 @@ params3 <- crossing(model = c("rf", "gbt", "gpr"),
 
 # All experiments. 
 params <- params1 %>% 
-#   add_row(params2) %>% 
-#   add_row(params3) %>% 
+  add_row(params2) %>%
+  add_row(params3) %>%
   mutate(niter = nmax / bsize) %>% # Number of iterations. 
   crossing(datafile = list.files("Simulation experiments/Data", ".RData")) # Input data sets. 
 

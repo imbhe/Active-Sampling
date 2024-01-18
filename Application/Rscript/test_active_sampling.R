@@ -5,13 +5,17 @@ load("Application/Data/Data.R")
 set.seed(123)
 cat("\14")
 
+t0 <- Sys.time()
 res <- active_sampling(df, 
                        sampling_method = "active sampling", 
                        proposal_dist = "NA",
                        target = "crash avoidance", 
-                       opt_method = "naive",
-                       batch_size = 2, 
-                       niter = 10, 
-                       verbose = TRUE, 
+                       opt_method = "minimising anticipated variance",
+                       batch_size = 10, 
+                       niter = 200, 
+                       verbose = FALSE, 
                        plot = FALSE, 
                        nboot = 0)
+t1 <- Sys.time()
+diff <- t1 - t0
+print(diff)
