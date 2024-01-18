@@ -60,8 +60,19 @@ run_experiments <- function(method) {
   
   t1 <- Sys.time()
   
-  return(list(sqerr_misr = sqerr_misr, sqerr_car = sqerr_car, elapsed = t1 - t0))
+  res <- tibble(n = nseq, 
+                mse_misr = apply(sqerr_misr, 2, mean), 
+                sdmse_misr = apply(sqerr_misr, 2, sd) ,
+                mse_car = apply(sqerr_car, 2, mean), 
+                sdmse_car = apply(sqerr_car, 2, sd),
+                nreps = nreps)
+  
+  return(res)
 }
 
-match <- run_experiments(method = "match")
-# maximin <- run_experiments(method = "maximin")
+res <- run_experiments(method = "match")
+save(res, file = "Application/Results/result_500groups_eRMSE_LHD.RData")
+
+res <- run_experiments(method = "maximin")
+save(res, file = "Application/Results/maximin.RData")
+
