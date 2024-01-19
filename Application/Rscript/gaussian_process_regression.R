@@ -1,8 +1,6 @@
 library("laGP")
-library("lhs")
 library("kernlab")
 library("magrittr")
-library("MatchIt")
 library("tidyverse")
 
 rm(list = ls())

@@ -50,8 +50,7 @@ active_sampling <- function(data,
                             target = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
                                        "impact speed reduction",
                                        "crash avoidance"),
-                            opt_method = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
-                                           "default", 
+                            opt_method = c("default", 
                                            "naive"),
                             batch_size = 1,
                             niter = 500, 
@@ -93,25 +92,14 @@ active_sampling <- function(data,
                  sampling_method, target))
   } 
   
-  # opt_method should be "NA" when sampling_method not equal to "active sampling".
-  if ( sampling_method != "active sampling" & opt_method != "NA") { 
-    stop(sprintf('Sampling_method = "%s" and opt_method = "%s" not allowed.', 
-                 sampling_method, opt_method))
-  } 
-  
   # proposal_dist must be specified if sampling_method = "importance sampling".
   if ( sampling_method == "importance sampling" & proposal_dist == "NA" ) {
     stop('Sampling_method = "importance sampling" and proposal_dist = "NA" not allowed.')
   }
   
-  # opt_method must be specified if sampling_method = "active sampling".
-  if ( sampling_method == "active sampling" & opt_method == "NA" ) {
-    stop('Sampling_method = "optimised" and opt_method = "NA" not allowed.')
-  }
-  
   # target must be specified if sampling_method = "active sampling".
   if ( sampling_method == "active sampling" & target == "NA" ) {
-    stop('Sampling_method = "optimised"" and target = "NA" not allowed.')
+    stop('Sampling_method = "active sampling"" and target = "NA" not allowed.')
   }
   
   # batch_size should be integer between 1 and number of cases in input dataset.
@@ -548,6 +536,7 @@ active_sampling <- function(data,
   
   return(list(results = res, 
               labelled = labelled, 
-              crashes = labelled %>% filter(impact_speed0 > 0)))
+              crashes = labelled %>% filter(impact_speed0 > 0), 
+              prob = prob$sampling_probability))
   
 }

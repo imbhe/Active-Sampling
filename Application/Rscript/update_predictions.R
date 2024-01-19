@@ -156,7 +156,7 @@ update_predictions <- function(labelled,
       p1_acc <- NA
       
     }
-  }else if(prediction_model_type == "xg_boost"){
+  } else if(prediction_model_type == "xg_boost"){
     # Train xg boost
     options(warn = -1)
     
