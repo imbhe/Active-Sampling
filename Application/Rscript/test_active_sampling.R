@@ -11,9 +11,10 @@ res <- active_sampling(df,
                        proposal_dist = "NA",
                        target = "crash avoidance", 
                        opt_method = "default",
-                       batch_size = 10, 
-                       niter = 200, 
-                       verbose = FALSE, 
+                       prediction_model_type = "gp",
+                       batch_size = 100, 
+                       niter = 5, 
+                       verbose = TRUE, 
                        plot = FALSE, 
                        nboot = 0)
 t1 <- Sys.time()

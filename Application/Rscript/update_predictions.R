@@ -5,7 +5,7 @@ update_predictions <- function(labelled,
                                verbose = FALSE, 
                                plot = FALSE,
                                iter = NA,
-                               prediction_model_type = c("rg", "xg_boost", "knn")) {
+                               prediction_model_type = c("rg", "xg_boost", "knn", "gp")) {
   
   # Check input parameters.
   target <- match.arg(target)
@@ -31,9 +31,11 @@ update_predictions <- function(labelled,
                         min.node.size = 1:20,
                         mtry = 1:3)
   
-  
-  # Estimate baseline collision probability. ----
+  # Random forest prediction model.
   if(prediction_model_type == "rg"){
+
+    # Estimate baseline collision probability. ----
+
     # Train random forest.  
     options(warn = -1)
     grid <- classGrid[sample(1:nrow(classGrid), 3), ]
@@ -149,6 +151,100 @@ update_predictions <- function(labelled,
         p1_acc <- NA
         
       } # End !is.null(rf).
+    } else { # If target not crash avoidance: don't fit model, set to constant.
+      
+      p1_train <- 1
+      p1_test <- 1
+      p1_acc <- NA
+      
+    }
+  } else if(prediction_model_type == "gp"){ # Gaussian process regression model.
+    
+    # Estimate baseline collision probability. ----
+    
+    # Train model. 
+    gp <- quietly(safe_gausspr_train)(as.factor(impact_speed0>0)~eoff + acc + impact_speed_max0, data = labelled)$result
+    
+    if ( !is.null(gp) ) { # If able to fit model: calculate predictions.
+      
+      # Prediction on labelled and unlabelled data.
+      p0_train <- predict(gp, labelled, type = "prob")[, 2]
+      p0_train[p0_train <= 0] <- min(p0_train[p0_train > 0]) # Avoid zero probabilities.
+      
+      p0_test <- predict(gp, unlabelled, type = "prob")[, 2]
+      p0_test[p0_test <= 0] <- min(p0_test[p0_test > 0]) # Avoid zero probabilities.
+      
+      # Accuracy.
+      p0_acc <- gp@error
+      
+    } else { # If unable to fit model: set to constant.
+      
+      p0_train <- 1
+      p0_test <- 1
+      p0_acc <- NA
+      
+    } # End !is.null(gp).
+    
+    
+    # Predict impact speed reduction ----
+    if ( target == "impact speed reduction" ) {
+      
+      # Train model.
+      gp <- quietly(safe_gausspr_train)(impact_speed_reduction~eoff + acc + impact_speed_max0, data = crashes)$result
+
+      if ( !is.null(gp) ) { # If able to fit model: calculate predictions.
+        
+        # Prediction on labelled and unlabelled data.
+        yhat_train <- predict(gp, crashes)
+        yhat_test <- predict(gp, unlabelled)
+        
+        # Root mean squared prediction error and prediction R-squared.
+        rmse_yhat <- gp@error
+        r2_yhat <- cor(gp@fitted, crashes$impact_speed_reduction)^2
+
+      } else { # If unable to fit model: set to constant.
+        
+        yhat_train <- 1
+        yhat_test <- 1
+        rmse_yhat <- NA
+        r2_yhat <- NA
+        
+      }
+    } else { # If target not impact speed reduction: don't fit model, set to constant.
+      
+      yhat_train <- 1
+      yhat_test <- 1
+      rmse_yhat <- NA
+      r2_yhat <- NA
+      
+    }
+    
+    
+    # Estimate counter-measure collision probability. ----
+    if ( target == "crash avoidance" ) {
+      
+      # Train model. 
+      gp <- quietly(safe_gausspr_train)(as.factor(impact_speed1>0)~eoff + acc + impact_speed_max0, data = crashes)$result
+      
+      if ( !is.null(gp) ) { # If able to fit model: calculate predictions.
+        
+        # Prediction on labelled and unlabelled data.
+        p1_train <- predict(gp, crashes, type = "prob")[, 2]
+        p1_train[p1_train <= 0] <- min(p1_train[p1_train > 0]) # Avoid zero probabilities.
+        
+        p1_test <- predict(gp, unlabelled, type = "prob")[, 2]
+        p1_test[p1_test <= 0] <- min(p1_test[p1_test > 0]) # Avoid zero probabilities.
+        
+        # Accuracy.
+        p1_acc <- gp@error
+        
+      } else { # If unable to fit model: set to constant.
+        
+        p1_train <- 1
+        p1_test <- 1
+        p1_acc <- NA
+        
+      } # End !is.null(gp).
     } else { # If target not crash avoidance: don't fit model, set to constant.
       
       p1_train <- 1
@@ -548,10 +644,10 @@ update_predictions <- function(labelled,
   # Print.
   if ( verbose ) {
     
-    cat(sprintf("Out-of-bag R-squared:
+    cat(sprintf("Prediction R-squared:
 Impact speed reduction = %.2f
 
-Out-of-bag Accuracy:
+Accuracy:
 Baseline crash probability = %.2f.
 Counter-meature crash probability = %.2f.
                 ", 
@@ -727,12 +823,12 @@ Counter-meature crash probability = %.2f.
   
   # Return.
 
-  return(list(collision_prob0 = p0_test,
-              collision_prob1 = p1_test,
-              impact_speed_reduction_pred = yhat_test,
-              rmse_impact_speed_reduction = rmse_yhat,
-              r2_impact_speed_reduction = r2_yhat,
-              accuracy_crash0 = p0_acc,
-              accuracy_crash1 = p1_acc))
+  return(list(collision_prob0 = as.numeric(p0_test),
+              collision_prob1 = as.numeric(p1_test),
+              impact_speed_reduction_pred = as.numeric(yhat_test),
+              rmse_impact_speed_reduction = as.numeric(rmse_yhat),
+              r2_impact_speed_reduction = as.numeric(r2_yhat),
+              accuracy_crash0 = as.numeric(p0_acc),
+              accuracy_crash1 = as.numeric(p1_acc)))
   
 }

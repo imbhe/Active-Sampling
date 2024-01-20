@@ -57,7 +57,7 @@ active_sampling <- function(data,
                             nboot = 500, 
                             verbose = FALSE, # TRUE or FALSE.
                             plot = FALSE,# TRUE or FALSE.
-                            prediction_model_type = c("rg", "xg_boost", "knn")) { # Only used when sampling_method = "active sampling".
+                            prediction_model_type = c("rg", "xg_boost", "knn", "gp")) { # Only used when sampling_method = "active sampling".
   
   
   # Make sure packages are loaded. ----
@@ -116,6 +116,7 @@ active_sampling <- function(data,
   source("Application/Rscript/estimate_totals.R")
   source("Application/Rscript/initialise_grid.R")
   source("Application/Rscript/safe_caret_train.R")
+  source("Application/Rscript/safe_gausspr_train.R")
   source("Application/Rscript/update_predictions.R")
   
   
@@ -438,6 +439,8 @@ active_sampling <- function(data,
       dplyr::select(impact_speed_reduction, crash_avoidance, baseline_crash) %>%
       as.matrix()
     n <- batch_size
+    
+    save(new_sample, Y, totals, n, file = "tmp")
     X <- with(new_sample, t((t(eoff_acc_prob * Y / mu) - totals[i, ] / n)))
     W <- with(new_sample, diag(nhits, nrow = nrow(X), ncol = nrow(X)))
 
@@ -451,7 +454,7 @@ active_sampling <- function(data,
 
     
     # Variance estimation using bootstrap method. ----
-    
+
     # If an element is selected multiple times: split into multiple observations/rows.
     ix <- rep(1:nrow(labelled), labelled$nhits) # To repeat rows.
     crashes <- labelled[ix, ] %>%
