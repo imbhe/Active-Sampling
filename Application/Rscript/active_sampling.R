@@ -70,6 +70,7 @@ active_sampling <- function(data,
   require("xgboost")
   require("ROSE")
   require("Matrix")
+  require("kernlab")
   
   
   # Check input parameters. ----
