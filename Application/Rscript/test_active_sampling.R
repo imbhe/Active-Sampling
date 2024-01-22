@@ -20,4 +20,3 @@ res <- active_sampling(df,
 t1 <- Sys.time()
 diff <- t1 - t0
 print(diff)
-
