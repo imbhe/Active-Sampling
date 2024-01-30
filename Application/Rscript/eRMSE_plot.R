@@ -140,8 +140,7 @@ gpr$car_CI_upper<- sqrt(gpr$mse_car + qnorm(0.975) * gpr$sdmse_car/sqrt(gpr$nrep
 
 gpr$res_group <- "Gaussian process active learning"
 gpr <- gpr %>%
-  select(-any_of(c("prediction_model_type","target","p75_misr","p25_misr","p75_car","p25_car",
-                   "p75.x","p75.y","p25.x","p25.y")))
+  select(-any_of(c("prediction_model_type","target")))
 
 res <- rbind(lhs,gpr)
 
@@ -210,9 +209,6 @@ g1 <- ggplot() +
   annotate("point", x = significance_star[1]*batch_size, y = 10^1.2, shape = 8, color = cb_palette[6], size = 1)+
   xlim(0, 2000) +
   scale_y_continuous(trans = 'log10', labels = scales::label_number()) +  # Log scale with decimal labels
-  # scale_y_continuous(trans = log10_trans(),
-  #                    breaks = trans_breaks("log10", function(x) 10^x),
-  #                    labels = trans_format("log10", math_format(10^.x))) +  # Adjust upper limit
   labs(x = "Sample size", 
        y = expression("eRMSE"),  # Updated y-axis label
        colour = NULL, linetype = NULL) +
@@ -235,9 +231,6 @@ g2 <- ggplot() +
   annotate("point", x = significance_star[2], y = 0.3, shape = 8, color = cb_palette[7], size = 1)+
   xlim(0, 2000) +
   scale_y_continuous(trans = 'log10', labels = scales::label_number()) +  # Log scale with decimal labels
-  # scale_y_continuous(trans = log10_trans(),
-  #                    breaks = trans_breaks("log10", function(x) 10^x),
-  #                    labels = trans_format("log10", math_format(10^.x))) +  # Adjust upper limit
   labs(x = "Sample size", y = "",
        colour = NULL, linetype = NULL) +
   ggtitle("Crash avoidance rate")+
