@@ -24,7 +24,7 @@ set.seed(seed_number)
 cb_palette <- sample(load_color)
 
 # Load the result
-load("Application/Results/result_500groups_coverage.R")
+load("Application/Results/result_500repetitions_coverage.R")
 simlist = list()
 for (i in 1:length(res_total[[1]])) {
   sim <- res_total[[1]][[i]]$res
@@ -125,9 +125,9 @@ g1 <- ggplot(impact_speed_reduction_cover_df,
                  colour = estimation_methods, linetype = estimation_methods)) +
   geom_line(size = 1) +
   xlim(0, 1000) +
-  ylim(0.70, 1) +
+  scale_y_continuous(limits = c(0.7,1),labels = scales::label_percent(scale = 100), breaks = seq(0.7, 1, by = 0.1)) +  # Format y-axis labels as percentages
   geom_hline(yintercept = 0.95, linetype = "dashed", color = "black") + 
-  labs(x = "Sample size", y = "Coverage rate for \u03B8",  # Theta as a Greek letter
+  labs(x = "Sample size", y = "Coverage rate",  # Theta as a Greek letter
        colour = NULL, linetype = NULL, fill = NULL) +
   guides(color = guide_legend(override.aes = list(size = 1), nrow = 4)) +
   scale_color_manual(values = cb_palette) +
@@ -140,7 +140,7 @@ g2 <- ggplot(crash_avoidance_cover_df,
                  colour = estimation_methods, linetype = estimation_methods)) +
   geom_line(size = 1) +
   xlim(0, 1000) +
-  ylim(0.70, 1) +
+  scale_y_continuous(limits = c(0.7,1),labels = scales::label_percent(scale = 100), breaks = seq(0.7, 1, by = 0.1)) +  # Format y-axis labels as percentages
   geom_hline(yintercept = 0.95, linetype = "dashed", color = "black") + 
   labs(x = "Sample size", y = "",  # Remove y-axis label
        colour = NULL, linetype = NULL, fill = NULL) +

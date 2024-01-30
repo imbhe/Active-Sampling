@@ -22,6 +22,7 @@ cat("\14")
 # Load packages. ----
 
 library("cowplot")
+library("RColorBrewer")
 library("tidyverse")
 
 
@@ -52,29 +53,7 @@ theme_update(axis.text = element_text(size = ptsize, colour = "black", family = 
 update_geom_defaults("text", list(size = ptsize / ggplot2:::.pt))
 
 
-# Prepare data. ----
-
-load("Application/Data/data.R")
-df %<>% 
-  filter(caseID == 22 & eoff <= 2) %>% 
-  mutate(caseID = as.numeric(caseID)) %>%
-  gather(impact_speed0, impact_speed1, key = "scenario", value = impact_speed) 
-
-ggplot(df) + 
-  geom_rect(aes(xmin = -acc - 0.25, xmax = -acc + 0.25, ymin = eoff - 0.05, ymax = eoff + 0.05, fill = impact_speed)) +
-  facet_wrap(~scenario, 
-             labeller = labeller(scenario = c(impact_speed0 = "Baseline", 
-                                              impact_speed1 = "AEB"))) + 
-  scale_fill_continuous(type = "viridis") + 
-  labs(x = bquote('Maximal deceleration '(m/s^2)),
-       y = "Off-road glance duration (s)",
-       fill = "Impact speed (km/h)") 
-
-ggsave("Application/Figures/application example.png", dpi = 1000, width = 159, height = 60, unit = "mm")
-
-
-
-# Active sampling
+# Plot. ----
 
 load("Application/Data/data.R")
 source("Application/Rscript/active_sampling.R")
@@ -113,7 +92,7 @@ fig1 <- ggplot(df) +
 
 fig2 <- ggplot(plt) + 
   geom_rect(aes(xmin = -acc - 0.25, xmax = -acc + 0.25, ymin = eoff - 0.05, ymax = eoff + 0.05, fill = prob)) +
-  scale_fill_continuous(type = "viridis", breaks = c(0.001, 0.005, 0.01), labels = c("small", "moderate", "large")) + 
+  scale_fill_gradientn(colours = colorRampPalette(rev(brewer.pal(11, "Spectral")))(11), breaks = c(0.001, 0.005, 0.01), labels = c("small", "moderate", "large")) + 
   labs(x = bquote('Maximal deceleration '(m/s^2)),
        y = "Off-road glance duration (s)",
        fill = "Sampling probability") + 

@@ -13,7 +13,6 @@ gc()
 # Load packages -----------------------------------------------------------
 
 library("BSDA")
-library("ggrepel")
 library("magrittr")
 library("MASS")
 library("tidyverse")
@@ -26,8 +25,8 @@ theme_set(theme_bw())
 theme_update(axis.text = element_text(size = ptsize, colour = "black", family = "serif"),
              axis.line = element_line(colour = "black", linewidth = 0.25), 
              axis.ticks = element_line(colour = "black", linewidth = 0.25), 
-             axis.title.y = element_text(margin = margin(t = 0, r = 0.2, b = 0, l = 0, unit = 'cm')),
-             legend.key.width = unit(1.65, "cm"),
+             axis.title.y = element_text(margin = margin(t = 0, r = 0.2, b = 0, l = 0.2, unit = 'cm')),
+             legend.key.width = unit(1.25, "cm"),
              legend.key.height = unit(0.5, "cm"),
              legend.text = element_text(size = ptsize, colour = "black", family = "serif"),
              legend.title = element_text(size = ptsize, colour = "black", family = "serif"),
@@ -231,13 +230,17 @@ for ( i in 1:nrow(params) ) {
 }
 rm(params)
 
+allres$r2lab = allres$r2
+allres$r2lab <- as.factor(allres$r2lab)
+levels(allres$r2lab) <- c(expression(paste("R"^2, " = 0.10")), 
+                          expression(paste("R"^2, " = 0.50")), 
+                          expression(paste("R"^2, " = 0.75")),
+                          expression(paste("R"^2, " = 0.90")))
+
 
 # Plot results.
 plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars) {
-  
-  cols <- palette.colors(palette = as.vector("Tableau 10"))
-  names(cols) <- NULL
-  
+
   plt <- allres
   
   if ( !show_stars ) {
@@ -251,32 +254,20 @@ plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars) {
     mutate(model_num = as.numeric(factor(model, levels = unique(model))),
            xstar = n, 
            ystar = max(rmse) - 0.3 * 1.2^(-2.5 * model_num)) %>% 
-           # rmse_low = ifelse(model %in% c("pps", "ratio", "cv"), NA, rmse_low), 
-           # rmse_high = ifelse(model %in% c("pps", "ratio", "cv"), NA, rmse_high)) %>% 
     ggplot(aes(x = n, color = model, fill = model, linetype = model)) +
     geom_ribbon(aes(ymin = rmse_low, ymax = rmse_high), color = NA, show.legend = FALSE, alpha = 0.5) + 
     geom_line(aes(y = rmse)) +
     geom_text(aes(x = xstar, y = ystar, label = star), show.legend = FALSE, size = 16 / .pt, vjust = 1) + 
-    facet_grid(bandwidth ~ r2) + 
-    # scale_colour_brewer(palette = "Set1", breaks = breaks, label = labels) +
-    # scale_fill_brewer(palette = "Pastel1", breaks = breaks, label = labels) +
-    # scale_colour_manual(values = cols, breaks = breaks, label = labels) +
-    # scale_fill_manual(values = cols, breaks = breaks, label = labels) +
     scale_colour_brewer(palette = "Dark2", breaks = breaks, label = labels) +
     scale_fill_brewer(palette = "Dark2", breaks = breaks, label = labels) +
-    # scale_colour_viridis_d(breaks = breaks, label = labels) +
-    # scale_fill_viridis_d(breaks = breaks, label = labels) +
     scale_linetype_discrete(breaks = breaks, label = labels) +
     scale_y_continuous(trans = "log10") +
-    facet_grid(r2~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
-                                                               `1` = "σ = 1", 
-                                                               `10` = "σ = 10"),
-                                                 r2 = c(`0.1` = "R2 = 0.10", 
-                                                        `0.5` = "R2 = 0.50", 
-                                                        `0.75` = "R2 = 0.75", 
-                                                        `0.9` = "R2 = 0.90"))) +
-    labs(x = "Total sample size",
-         y = expression(paste("RMSE of ", hat(theta))),
+    facet_grid(r2lab~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
+                                                                  `1` = "σ = 1", 
+                                                                  `10` = "σ = 10"),
+                                                    r2lab = label_parsed)) +
+    labs(x = "Sample size",
+         y = "eRMSE",
          colour = NULL,
          fill = NULL,
          linetype = NULL) 
@@ -291,7 +282,7 @@ plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars) {
 }
 
 breaks <- c("const", "cv", "ratio", "pps", "lm", "gam", "gbt", "gpr", "rf")
-labels <- c("SRS", "CV", "Rest", "PPS", "AS+LM", "AS+GAM", "AS+GBT", "AS+GPR", "AS+RF")
+labels <- c("Simple random sampling", "Control variates", "Ratio estimator", "Importance sampling", "Active sampling+LM", "Active sampling+GAM", "Active sampling+GBT", "Active sampling+GPR", "Active sampling+RF")
 
 # There was a substantial performance gain with active sampling already at small samples.
 # The performance gain increased with the signal-to-noise ratio. 
@@ -308,9 +299,6 @@ plot_this(10, FALSE, "Hajek", "zero_mean", TRUE)
 
 # Similar results were observed also for other machine learning algorithms. 
 plot_this(50, FALSE, "default", "strictly_positive", FALSE)
-# plot_this(50, FALSE, "default", "zero_mean")
-# plot_this(50, FALSE, "Hajek", "strictly_positive")
-# plot_this(50, FALSE, "Hajek", "zero_mean")
 
 # In contrast, a naive implementation of the active sampling algorithm resulted in worse performance 
 # compared to simple random sampling, particularly in low signal-to-noise ratio settings, 
@@ -321,9 +309,6 @@ plot_this(10, TRUE, "default", "strictly_positive", FALSE)
 # Effect of batch size on performance. 
 plot_this <- function(naive_, estimator_, normalization_, model_) {
   
-  cols <- palette.colors(palette = as.vector("Tableau 10"))
-  names(cols) <- NULL
-  
   p <- allres %>% 
     filter(naive == naive_ & estimator == estimator_ & normalization == normalization_ & (model == model_ | (model == "const" & bsize == 10))) %>% 
     mutate(group = paste(model, bsize)) %>% 
@@ -331,25 +316,16 @@ plot_this <- function(naive_, estimator_, normalization_, model_) {
     geom_ribbon(aes(ymin = rmse_low, ymax = rmse_high), color = NA, show.legend = FALSE, alpha = 0.5) + 
     geom_line(aes(y = rmse)) +
     facet_grid(bandwidth ~ r2) + 
-    # scale_colour_brewer(palette = "Set1", breaks = breaks, label = labels) +
-    # scale_fill_brewer(palette = "Pastel1", breaks = breaks, label = labels) +
-    # scale_colour_manual(values = cols, breaks = breaks, label = labels) +
-    # scale_fill_manual(values = cols, breaks = breaks, label = labels) +
     scale_colour_brewer(palette = "Dark2", breaks = breaks, label = labels) +
     scale_fill_brewer(palette = "Dark2", breaks = breaks, label = labels) +
-    # scale_colour_viridis_d(breaks = breaks, label = labels) +
-    # scale_fill_viridis_d(breaks = breaks, label = labels) +
     scale_linetype_discrete(breaks = breaks, label = labels) +
     scale_y_continuous(trans = "log10") +
-    facet_grid(r2~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
-                                                               `1` = "σ = 1", 
-                                                               `10` = "σ = 10"),
-                                                 r2 = c(`0.1` = "R2 = 0.10", 
-                                                        `0.5` = "R2 = 0.50", 
-                                                        `0.75` = "R2 = 0.75", 
-                                                        `0.9` = "R2 = 0.90"))) +
-    labs(x = "Total sample size",
-         y = expression(paste("RMSE of ", hat(theta))),
+    facet_grid(r2lab~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
+                                                                  `1` = "σ = 1", 
+                                                                  `10` = "σ = 10"),
+                                                    r2lab = label_parsed)) +
+    labs(x = "Sample size",
+         y = "eRMSE",
          colour = NULL,
          fill = NULL,
          linetype = NULL) 
@@ -364,7 +340,7 @@ plot_this <- function(naive_, estimator_, normalization_, model_) {
 }
 
 breaks <- c("const 10", "gam 10", "gam 50")
-labels <- c("SRS", "AS, batch size = 10", "AS, batch size = 50")
+labels <- c("Simple random sampling", "AS, batch size = 10", "AS, batch size = 50")
 
 # Better performance was observed with a small batch size but difference were 
 # attenuated as the sample size increased.  
@@ -379,4 +355,3 @@ allres %>%
   summarize(min = 1 - max(sample_size_ratio, na.rm = TRUE),
             max = 1 - min(sample_size_ratio, na.rm = TRUE),
             range = sprintf("%.1f–%.1f", 100 * min, 100 * max), .groups = "keep")
-

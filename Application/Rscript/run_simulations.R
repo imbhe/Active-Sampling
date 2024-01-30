@@ -4,7 +4,6 @@ source("Application/Rscript/active_sampling.R")
 
 # load the experiment data
 load("Application/Data/Data.R")
-
 # load which sampling methods to run
 sampling_input <- read_excel("Application/Input/sampling_method_input_rmse_example.xlsx")
 
@@ -13,16 +12,16 @@ param_input <- read_excel("Application/Input/parameter_input.xlsx")
 add_effn = 2000
 niter = ceiling(add_effn/param_input$batch_size)
 res_total= replicate(length(param_input$Sim_n), data.frame())
-prediction_model_type = "knn" # "xg_boost" "rg" "knn"
+prediction_model_type = "rg" # "xg_boost" "rg" "knn" "Gaussian"
 for(j in 1:length(param_input$Sim_n)){
   inputparameter <- data.frame(param_input$batch_size[j],niter[j],param_input$nboot[j],param_input$Sim_n[j])
   colnames(inputparameter) <- c("batch_size","niter", "nboot","Sim_n")
   res_top_loop = replicate(tail(sampling_input$sim_order, 1), data.frame())
   for(i in 1:tail(sampling_input$sim_order, 1)){
+    res_list <- replicate(inputparameter$Sim_n, data.frame())
     for (k in 1:inputparameter$Sim_n){
       print(paste("Sampling method",sampling_input[i,]$group,",simulation",k,"starts,","number per iteration:",
                   inputparameter$batch_size,",total iteration:",inputparameter$niter))
-      res_list <- replicate(inputparameter$Sim_n, data.frame())
       set.seed(k)
       out <- active_sampling (df, 
                               sampling_input[i,]$sampling_method, 
@@ -46,5 +45,5 @@ for(j in 1:length(param_input$Sim_n)){
   res_total[[j]] <- res_top_loop
 }  
 
-save(res_total, file = "Application/Results/result.R")
+save(res_total, file = "Application/Results/test.R")
 

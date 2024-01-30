@@ -68,7 +68,6 @@ active_sampling <- function(data,
   require("stringr")
   require("tidyverse")
   require("xgboost")
-  require("ROSE")
   require("Matrix")
   require("kernlab")
   
@@ -137,11 +136,7 @@ active_sampling <- function(data,
   if ( sampling_method == "active sampling" & niter * batch_size >= 10 ) {
     
     n_update <- c(seq(10, 100, 10), seq(125, 500, 25), seq(550, 1000, 50), seq(1100, 2000, 100), seq(2200, 5000, 200), seq(5500, 10000, 500))
-    
-    if ( prediction_model_type == "gp" ) {
-      n_update <- c(seq(100, 1000, 100), seq(1250, 5000, 250), seq(6000, 10000, 1000))
-    }
-    
+
     model_update_iterations <- vapply(1:length(n_update), function(ix) which(c(nseq, 0) > n_update[ix] & c(0, nseq) > n_update[ix])[1] - 1, FUN.VALUE = numeric(1))
     model_update_iterations <- as.numeric(na.omit(model_update_iterations))
     model_update_iterations <- unique(model_update_iterations[model_update_iterations > 1])
