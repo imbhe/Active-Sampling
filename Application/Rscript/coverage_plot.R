@@ -24,7 +24,7 @@ set.seed(seed_number)
 cb_palette <- sample(load_color)
 
 # Load the result
-load("Application/Results/result_500repetitions_coverage.R")
+load("Application/Results/Coverage_check_20240405.R")
 simlist = list()
 for (i in 1:length(res_total[[1]])) {
   sim <- res_total[[1]][[i]]$res
@@ -153,4 +153,4 @@ g2 <- ggplot(crash_avoidance_cover_df,
 c1 <- ggarrange(g1, g2,
                 ncol = 2, nrow = 1, common.legend = TRUE, align = "hv", labels = c('A', 'B'),
                 font.label = list(size = 10, color = "black"), legend = "bottom")
-ggsave(sprintf(paste("Application/Figures/","95_coverage_plot.png",sep = "")), c1, dpi = 1000, width =160, height =70, unit = "mm")
+ggsave(sprintf(paste("Application/Figures/","Check0405_95_coverage_plot.png",sep = "")), c1, dpi = 1000, width =160, height =70, unit = "mm")

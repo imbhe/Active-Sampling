@@ -17,3 +17,16 @@ Make sure that the boot, caret, magrittr, ranger, stringr and tidyverse packages
 Output and figures are stored in the Output folder.
 
 Input data, including input parameters to the experiments, are stored in the Data folder.
+
+Replication of Figure 4
+
+The R script “~ActiveSampling/Application/Rscript/Replication_of_Figure4.R” load the data input from “~ActiveSampling/Application/ Data/Data.R” and sampling algorithm type input from “~Application/Input/sampling_method_input_coverage_example.xlsx” and sampling parameter input from “~Application/Input/parameter_input coverage_example.xlsx”. The default setting is to run 500 groups of simulations and 500 groups of bootstraps for both the impact speed reduction target Active sampling and the crash avoidance target Active sampling method. By running this R script “Replication_of_Figure4.R” load”, it runs the default setting of simulations and also the post analysis to plot Figure 4 under folder “~ActiveSampling/Application/Reproduced_figures/” with name “Replication_95_coverage_plot.png”. The simulations can take up to two days.
+
+We have run many kinds of sampling methods with different target and prediction models. It can take time to re-run all the simulations. We have saved all the results based on which the figures in the manuscript were plotted. Below is the explaination on how to get the figures based on the saved results.
+
+Figure 5
+Run R script “~/Documents/GitHub/Check reproducibility/ActiveSampling/Application/Rscript/Figure5.R” and a new Figure will be saved by the path “Application/Figures/Figure5.png”.
+
+Figure S7
+Run R script “~/Documents/GitHub/Check reproducibility/ActiveSampling/Application/Rscript/FigureS7.R” and a new Figure will be saved by the path “Application/Figures/FigureS7.png”.
+

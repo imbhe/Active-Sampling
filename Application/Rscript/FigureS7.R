@@ -174,5 +174,5 @@ c1 <- ggarrange(g1, g2 ,
                 ncol = 2, nrow = 1,common.legend = TRUE,align = "hv", labels=c('A','B'),
                 font.label = list(size = 10, color = "black"),legend="bottom")
 
-ggsave(sprintf(paste("Application/Figures/","Different_prediction_models.png",sep = "")), c1, dpi = 1000, width =160, height =75, unit = "mm")
+ggsave(sprintf(paste("Application/Figures/","FigureS7.png",sep = "")), c1, dpi = 1000, width =160, height =75, unit = "mm")
 
