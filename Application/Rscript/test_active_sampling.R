@@ -7,11 +7,11 @@ cat("\14")
 
 t0 <- Sys.time()
 res <- active_sampling(df, 
-                       sampling_method = "active sampling", 
-                       proposal_dist = "NA",
-                       target = "impact speed reduction", 
-                       opt_method = "default",
-                       prediction_model_type = "gp",
+                       sampling_method = "importance sampling", 
+                       proposal_dist = "leverage sampling",
+                       target = NULL, 
+                       opt_method = NULL,
+                       prediction_model_type = NULL,
                        batch_size = 10, 
                        niter = 200, 
                        verbose = TRUE, 

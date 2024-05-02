@@ -15,6 +15,8 @@
 #
 # sampling_method: simple random sampling, importance sampling, or active sampling.
 #
+# proposal_dist: proposal distribution for importance sampling. 
+#
 # target: target of optimisation. Only used when sampling_method = "active sampling".
 #
 # opt_method: method for finding optimal sampling scheme. Only used when sampling_method = "active sampling".
@@ -46,7 +48,8 @@ active_sampling <- function(data,
                                                 "active sampling"), 
                             proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
                                               "density sampling", 
-                                              "severity sampling"), 
+                                              "severity sampling", 
+                                              "leverage sampling"), 
                             target = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
                                        "impact speed reduction",
                                        "crash avoidance"),

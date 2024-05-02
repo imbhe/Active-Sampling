@@ -6,7 +6,8 @@ calculate_sampling_scheme <- function(unlabelled,
                                                           "active sampling"), 
                                       proposal_dist = c("NA", # Only used when sampling_method = "importance sampling", "NA" otherwise.
                                                         "density sampling", 
-                                                        "severity sampling"), 
+                                                        "severity sampling", 
+                                                        "leverage sampling"), 
                                       target = c("NA", # Only used when sampling_method = "active sampling", "NA" otherwise.
                                                  "impact speed reduction",
                                                  "crash avoidance"),
@@ -39,7 +40,14 @@ calculate_sampling_scheme <- function(unlabelled,
       impact_speed_max0_std <- with(unlabelled, impact_speed_max0 - min(impact_speed_max0))
       impact_speed_max0_std <- 0.1 + 0.9 * impact_speed_max0_std / max(impact_speed_max0_std)
       size <- unlabelled$eoff_acc_prob * eoff_std * acc_std * impact_speed_max0_std
-
+      
+    } else if ( proposal_dist == "leverage sampling" ) { # Leverage sampling.
+      
+      # Statistical leverage score according to weighted least squares. 
+      # Response variable needed model formula but not used when calculating the hat values (leverage scores).
+      mod <- lm(impact_speed_reduction ~ eoff + acc, weights = eoff_acc_prob, data = unlabelled) 
+      size <- as.numeric(hatvalues(mod))
+      
     } 
     
   } else if ( sampling_method == "active sampling" ) {
@@ -51,14 +59,14 @@ calculate_sampling_scheme <- function(unlabelled,
     } else {
       collision_prob0_pred <- unlabelled$collision_prob0_pred
     }
-
+    
     if ( target == "impact speed reduction" ) {
       
       r2 <- r2$impact_speed_reduction
       mu <- est$mean_impact_speed_reduction
       pred <- unlabelled$impact_speed_reduction_pred
       sigma <- unlabelled$sigma_impact_speed_reduction
-
+      
     } else if ( target == "crash avoidance" ) {
       
       r2 <- r2$accuracy_crash1
@@ -67,7 +75,7 @@ calculate_sampling_scheme <- function(unlabelled,
       sigma <- unlabelled$sigma_collision1
       
     } 
-  
+    
     # If prediction R-squared/accuracy is missing or negative: set all equal.
     if ( is.na(r2) | r2 < 0 ) {
       mu <- 0
