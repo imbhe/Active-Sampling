@@ -1,3 +1,7 @@
+library("readxl")
+# source the sampling scripts
+source("Application/Rscript/active_sampling.R")
+source("Application/Rscript/CI_calculation.R")
 # Function to check and install missing packages, then load them
 load_required_packages <- function(packages) {
   for (package in packages) {
@@ -11,34 +15,69 @@ load_required_packages <- function(packages) {
 }
 
 # List of packages required for the script
-required_packages <- c("ggplot2", "ggpubr", "scales", "dplyr")
+required_packages <- c("ggplot2", "ggpubr", "scales", "dplyr","RColorBrewer","progress",
+                       "lhs","MatchIt")
 
 # Load required packages
 load_required_packages(required_packages)
+# load the experiment data
+load("Application/Data/Data.R")
+# load which sampling methods to run
+sampling_input <- read_excel("Application/Input/sampling_method_input_rmse_example.xlsx")
 
-source("Application/Rscript/CI_calculation.R")
-
+# load how many simulations to run
+param_input <- read_excel("Application/Input/parameter_input_rmse_example.xlsx")
+max_sample_size = 2000
+niter = ceiling(max_sample_size/param_input$batch_size)
+res_total= replicate(length(param_input$n_repetition), data.frame())
+prediction_model_type = "rg" # "xg_boost" "rg" "knn" "Gaussian"
+# Set up progress bar.
+pb <- progress_bar$new(format = "[:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
+                       total = tail(sampling_input$sim_order, 1)+1,
+                       clear = FALSE)      
+for(j in 1:length(param_input$n_repetition)){
+  inputparameter <- data.frame(param_input$batch_size[j],niter[j],param_input$nboot[j],param_input$n_repetition[j])
+  colnames(inputparameter) <- c("batch_size","niter", "nboot","n_repetition")
+  res_top_loop = replicate(tail(sampling_input$sim_order, 1), data.frame())
+  # Update progress bar.
+  for(i in 1:tail(sampling_input$sim_order, 1)){
+    pb$tick()
+    res_list <- replicate(inputparameter$n_repetition, data.frame())
+    for (k in 1:inputparameter$n_repetition){
+      # print(paste("Sampling method",sampling_input[i,]$group,",simulation",k,"starts,","number per iteration:",
+      #             inputparameter$batch_size,",total iteration:",inputparameter$niter))
+      set.seed(k)
+      out <- active_sampling (df, 
+                              sampling_input[i,]$sampling_method, 
+                              sampling_input[i,]$proposal_dist,
+                              sampling_input[i,]$target, 
+                              sampling_input[i,]$opt_method,
+                              inputparameter$batch_size,
+                              inputparameter$niter,
+                              inputparameter$nboot,
+                              verbose = FALSE,
+                              plot = FALSE,
+                              prediction_model_type)
+      res_list[[k]] <- out$results
+    }
+    res <- do.call(rbind, res_list)
+    res_in_loop <- list(res = res)
+    # print(paste("sampling method",i,sampling_input$group[i],"is finished"))
+    res_top_loop[[i]] <- res_in_loop
+  }
+  # print(paste("loop",j,"is finished"))
+  res_total[[j]] <- res_top_loop
+}  
+source("Application/Rscript/latin_hypercube_sampling.R")
+lhs <- res
+source("Application/Rscript/gaussian_process_active_learning.R")
+gpr <- res
 cb_palette = c("#666666","#E7298A", "#1B9E77","#E6AB02",  "#A6761D","#6BAED6","#7570B3","#D95F02" )
-
-load("Application/Results/RMSE_check_20240405.R")
-
 simlist = list()
 for (i in 1:length(res_total[[1]])) {
-  simlist[[i]] <- res_total[[1]][[i]]$res
+  sim <- res_total[[1]][[i]]$res
+  simlist[[i]] <- sim
 }
-
-total_sum1 = do.call(rbind, simlist)
-# selected_total_sum <- subset(total_sum, opt_method != "naive")
-
-load("Application/Results/leverage_sampling.R")
-
-simlist = list()
-for (i in 1:length(res_total[[1]])) {
-  simlist[[i]] <- res_total[[1]][[i]]$res
-}
-
-total_sum2 = do.call(rbind, simlist)
-total_sum = rbind(total_sum1, total_sum2)
 selected_total_sum <- subset(total_sum, opt_method != "naive")
 
 selected_total_sum <- selected_total_sum %>%
@@ -99,12 +138,12 @@ colnames(p_df) <- column_names
 for(iter_criteria in unique(ci_df$iter)){
   p_df$iter[iter_criteria] = iter_criteria
   isr_t = t.test(unlist(ci_df %>% filter (new_group =="Active sampling, target = mean impact speed reduction" &
-                                                    iter == iter_criteria) %>%
-         pull(mean_impact_speed_reduction_err_vector)),
-       unlist(ci_df %>% filter (new_group =="Density importance sampling" &
-                                                     iter == iter_criteria) %>%
-         pull(mean_impact_speed_reduction_err_vector)),
-       alternative = "two.sided", var.equal = FALSE)
+                                            iter == iter_criteria) %>%
+                          pull(mean_impact_speed_reduction_err_vector)),
+                 unlist(ci_df %>% filter (new_group =="Density importance sampling" &
+                                            iter == iter_criteria) %>%
+                          pull(mean_impact_speed_reduction_err_vector)),
+                 alternative = "two.sided", var.equal = FALSE)
   p_df$impact_speed_reduction_p_value[iter_criteria] = isr_t$p.value
   if (isr_t$p.value >0.05){
     p_df$isr_significance[iter_criteria] = "non significance"
@@ -123,13 +162,10 @@ indices <- which(p_df$isr_significance == "non significance")
 if(length(indices) == 0){
   significance_star[1] = 1
 }else {
-significance_star[1] = p_df$iter[max(indices)+1]}
+  significance_star[1] = p_df$iter[max(indices)+1]}
 
 batch_size = unique(ci_df$batch_size)
 
-# load other two sampling Latin hypercube sampling and Gaussian process active learning
-load("Application/Results/result_500repetitions_eRMSE_LHS.RData")
-lhs <- res
 lhs$misr_eRmse <- sqrt(lhs$mse_misr)
 lhs$misr_CI_lower <- sqrt(lhs$mse_misr - qnorm(0.975) * lhs$sdmse_misr/sqrt(lhs$nreps))
 lhs$misr_CI_upper <- sqrt(lhs$mse_misr + qnorm(0.975) * lhs$sdmse_misr/sqrt(lhs$nreps))
@@ -140,8 +176,6 @@ lhs$car_CI_upper<- sqrt(lhs$mse_car + qnorm(0.975) * lhs$sdmse_car/sqrt(lhs$nrep
 
 lhs$res_group <- "Latin hypercube sampling"
 
-load("Application/Results/result_500repetitions_eRMSE_GPR.RData")
-gpr <- res
 gpr$misr_eRmse <- sqrt(gpr$mse_misr)
 gpr$misr_CI_lower <- sqrt(gpr$mse_misr - qnorm(0.975) * gpr$sdmse_misr/sqrt(gpr$nreps))
 gpr$misr_CI_upper <- sqrt(gpr$mse_misr + qnorm(0.975) * gpr$sdmse_misr/sqrt(gpr$nreps))
@@ -168,28 +202,28 @@ ci_df <- ci_df %>% add_row(
   crash_avoidance_lower_ci = res$car_CI_lower,
   crash_avoidance_upper_ci = res$car_CI_upper,
 )
-  groups = c("Simple random sampling",
-             "Density importance sampling",
-             "Severity importance sampling",
-             "Latin hypercube sampling",
-             "Gaussian process active learning",
-             "Leverage sampling",
-             "Active sampling, target = mean impact speed reduction",
-             "Active sampling, target = crash avoidance rate")
-  ci_df$new_group <- factor(ci_df$new_group, levels = 
-                                           groups)
-  indices = c()
-  for(i in unique(ci_df %>% filter (new_group =="Gaussian process active learning") %>%
-                  pull(iter)*10)[-46]) {
-    indices[i] = ci_df %>% filter (new_group =="Active sampling, target = crash avoidance rate"&
-                                     iter == round(i/10)) %>%
-      pull(crash_avoidance_upper_ci) <
-      ci_df %>% filter (new_group =="Gaussian process active learning"&
-                          iter == (i/10)) %>%
-      pull(crash_avoidance_lower_ci)
-  }
-  
-  significance_star[2] = which(indices == TRUE)[1]
+groups = c("Simple random sampling",
+           "Density importance sampling",
+           "Severity importance sampling",
+           "Latin hypercube sampling",
+           "Gaussian process active learning",
+           "Leverage sampling",
+           "Active sampling, target = mean impact speed reduction",
+           "Active sampling, target = crash avoidance rate")
+ci_df$new_group <- factor(ci_df$new_group, levels = 
+                            groups)
+indices = c()
+for(i in unique(ci_df %>% filter (new_group =="Gaussian process active learning") %>%
+                pull(iter)*10)[-46]) {
+  indices[i] = ci_df %>% filter (new_group =="Active sampling, target = crash avoidance rate"&
+                                   iter == round(i/10)) %>%
+    pull(crash_avoidance_upper_ci) <
+    ci_df %>% filter (new_group =="Gaussian process active learning"&
+                        iter == (i/10)) %>%
+    pull(crash_avoidance_lower_ci)
+}
+
+significance_star[2] = which(indices == TRUE)[1]
 ptsize <- 10
 theme_set(theme_bw()) 
 theme_update(axis.text = element_text(size = ptsize, colour = "black", family = "serif"),
@@ -216,9 +250,9 @@ g1 <- ggplot() +
   geom_line(data = ci_df, aes(x =  iter* batch_size, y = mean_impact_speed_reduction_RMSE,
                               colour = new_group, linetype = new_group), size = 1) +
   geom_ribbon(data = ci_df, aes(x =  iter* batch_size, 
-                                                          ymin = mean_impact_speed_reduction_lower_ci, 
-                                                          ymax = mean_impact_speed_reduction_upper_ci, 
-                                                          fill = new_group), alpha = 0.3,show.legend = FALSE) +  # Adjust alpha for transparency
+                                ymin = mean_impact_speed_reduction_lower_ci, 
+                                ymax = mean_impact_speed_reduction_upper_ci, 
+                                fill = new_group), alpha = 0.3,show.legend = FALSE) +  # Adjust alpha for transparency
   annotate("point", x = significance_star[1]*batch_size, y = 10^1.2, shape = 8, color = cb_palette[7], size = 1)+
   xlim(0, 2000) +
   scale_y_continuous(trans = 'log10', labels = scales::label_number()) +  # Log scale with decimal labels
@@ -238,9 +272,9 @@ g2 <- ggplot() +
   geom_line(data = ci_df, aes(x =  iter* batch_size, y = crash_avoidance_RMSE,
                               colour = new_group, linetype = new_group), size = 1) +
   geom_ribbon(data = ci_df, aes(x =  iter* batch_size, 
-                                                   ymin = crash_avoidance_lower_ci, 
-                                                   ymax = crash_avoidance_upper_ci, 
-                                                   fill = new_group), alpha = 0.3,show.legend = FALSE) +  # Adjust alpha for transparency
+                                ymin = crash_avoidance_lower_ci, 
+                                ymax = crash_avoidance_upper_ci, 
+                                fill = new_group), alpha = 0.3,show.legend = FALSE) +  # Adjust alpha for transparency
   annotate("point", x = significance_star[2], y = 0.3, shape = 8, color = cb_palette[8], size = 1)+
   xlim(0, 2000) +
   scale_y_continuous(trans = 'log10', labels = scales::label_number()) +  # Log scale with decimal labels
@@ -256,4 +290,5 @@ c1 <- ggarrange(g1, g2 ,
                 ncol = 2, nrow = 1,common.legend = TRUE,align = "hv", labels=c('A','B'),
                 font.label = list(size = 10, color = "black"),legend="bottom")
 
-ggsave(sprintf(paste("Application/Figures/","Figure5.png",sep = "")), c1, dpi = 1000, width =160, height =75, unit = "mm")
+ggsave(sprintf(paste("Reproducibility check/Reproduced_figures/","Replication_active_sampling_vs_importance_sampling.png",sep = "")), c1, dpi = 1000, width =160, height =70, unit = "mm")
+

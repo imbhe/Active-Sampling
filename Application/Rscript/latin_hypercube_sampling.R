@@ -49,7 +49,7 @@ run_experiments <- function(n_per_case = seq(1, 50, 1), nreps = 100) {
   n_cases <- length(unique(df$caseID))
   
   for ( i in 1:nreps ) {
-    print(sprintf("i = %d", i))
+    # print(sprintf("i = %d", i))
     
     for ( j in seq_along(n_per_case) )  {
 

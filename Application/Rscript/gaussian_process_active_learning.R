@@ -37,7 +37,7 @@ run_experiments <- function(yvar, n_per_case_per_iter = 5, niter = 10, nreps = 5
   sqerr <- matrix(NA, nrow = nreps, ncol = niter)
   
   for ( i in 1:nreps ) {
-    print(sprintf("i = %d", i))
+    # print(sprintf("i = %d", i))
     
     sd_pred <- rep(1, N) 
     labelled <- NULL

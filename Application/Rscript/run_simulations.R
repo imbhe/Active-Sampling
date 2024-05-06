@@ -5,7 +5,7 @@ source("Application/Rscript/active_sampling.R")
 # load the experiment data
 load("Application/Data/Data.R")
 # load which sampling methods to run
-sampling_input <- read_excel("Application/Input/sampling_method_input_coverage_example.xlsx")
+sampling_input <- read_excel("Application/Input/sampling_method_input_rmse_example_leverage.xlsx")
 
 # load how many simulations to run
 param_input <- read_excel("Application/Input/parameter_input.xlsx")
@@ -45,5 +45,5 @@ for(j in 1:length(param_input$n_repetition)){
   res_total[[j]] <- res_top_loop
 }  
 
-save(res_total, file = "Application/Results/Coverage_check_20240405.R")
+save(res_total, file = "Application/Results/leverage_sampling.R")
 
