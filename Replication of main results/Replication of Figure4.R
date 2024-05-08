@@ -2,21 +2,9 @@
 library("readxl")
 # source the sampling scripts
 source("Application/Rscript/active_sampling.R")
-# Function to check and install missing packages, then load them
-load_required_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      message(paste("Package", package, "is not installed. Attempting to install now."))
-      install.packages(package)
-    }
-    # Load the package after installation or if it was already installed
-    library(package, character.only = TRUE)
-  }
-}
-
+source("Application/Rscript/load_required_packages.R")
 # List of packages required for the script
 required_packages <- c("ggplot2", "ggpubr", "scales", "dplyr","RColorBrewer","progress")
-
 # Load required packages
 load_required_packages(required_packages)
 # load the experiment data
