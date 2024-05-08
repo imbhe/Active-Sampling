@@ -1,4 +1,38 @@
-# To add headings
+################################################################################
+# Replication of Figure4.R
+#
+# INPUT:
+#
+# data: input dataset with variables and data loaded by load("Application/Data/Data.R")
+#   - 'caseID': ID for original crash event. 
+#   - 'eoff': off-road glance duration.
+#   - 'acc': minimal acceleration during braking (negative maximal deceleration).
+#   - 'eoff_acc_prob': probability of (eoff, acc) pair according to baseline distribution.
+#   - 'impact_speed0': impact speed in baseline scenario.
+#   - 'impact_speed1': impact speed  in counter factual scenario (i.e., with counter measure such as AEB).
+#   - 'impact_speed_max0': maximal possible impact speed per caseID.
+# load sampling method input and it is loaded by sampling_input <- read_excel("Application/Input/sampling_method_input_coverage_example.xlsx")
+#   - sampling_method: simple random sampling, importance sampling, or active sampling.
+#   - proposal_dist: proposal distribution for importance sampling. 
+#   - target: target of optimisation. Only used when sampling_method = "active sampling".
+#   - opt_method: method for finding optimal sampling scheme. Only used when sampling_method = "active sampling".
+# load simulation parameter input by param_input <- read_excel("Application/Input/parameter_input_coverage_example.xlsx")
+#   - n_repetition: number of repeated simulations with the same sampling method and different seeds. 
+#   - batch_size: number of observations to sample per iteration. 
+#   - niter: number of iterations.
+#   - nboot: number of bootstrap replicates used to calculate bootstrap confidence intervals.
+#
+# OUTPUT:
+#
+# Replication of Figure 4 is saved under "Replication of main results" folder with name "Replication_95_coverage_plot.png".
+#
+# SUMMARY
+#
+# This replication file first load data and all sampling method and parameter input and call active sampling method.
+# Then analyze based on the simulation results and produce and save the Figure4 under "Replication of main results" folder
+# with name "Replication_95_coverage_plot.png".
+# The process bar with estimated time is printed when the simulations are running.
+################################################################################
 library("readxl")
 # source the sampling scripts
 source("Application/Rscript/active_sampling.R")
