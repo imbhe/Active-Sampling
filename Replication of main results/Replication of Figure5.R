@@ -235,9 +235,10 @@ groups = c("Simple random sampling",
 ci_df$new_group <- factor(ci_df$new_group, levels = 
                             groups)
 indices = c()
+
 for(i in unique(ci_df %>% filter (new_group =="Gaussian process active learning") %>%
                 pull(iter)*10)) {
-  if(i<=200){
+  if(i<=2000){
   indices[i] = ci_df %>% filter (new_group =="Active sampling, target = crash avoidance rate"&
                                    iter == round(i/10)) %>%
     pull(crash_avoidance_upper_ci) <
