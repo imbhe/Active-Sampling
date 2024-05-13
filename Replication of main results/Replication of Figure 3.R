@@ -318,7 +318,7 @@ plt <- allres %>%
          ystar = max(rmse) - 0.3 * 1.2^(-2.5 * model_num)) 
 
 # Plot.
-plt %>% 
+p <- plt %>% 
   ggplot(aes(x = n, color = model, fill = model, linetype = model)) +
   geom_ribbon(aes(ymin = rmse_low, ymax = rmse_high), color = NA, show.legend = FALSE, alpha = 0.5) + 
   geom_line(aes(y = rmse)) +
@@ -337,14 +337,10 @@ plt %>%
        fill = NULL,
        linetype = NULL) 
 
-ggsave("Replication of main results/Figure 3.png", width = 160, height = 130, unit = "mm", dpi = 1000)
+print(p)
 
+# Save.
+ggsave("Replication of main results/Replication of Figure 3.png", width = 160, height = 130, unit = "mm", dpi = 1000)
 
-# Sample size reductions vs SRS -------------------------------------------
-
-allres %>% 
-  filter(model == "gam" & n == 250 & bsize == 10 & !naive & r2 >= 0.5) %>% 
-  group_by(normalization, estimator) %>% 
-  summarize(min = 1 - max(sample_size_ratio, na.rm = TRUE),
-            max = 1 - min(sample_size_ratio, na.rm = TRUE),
-            range = sprintf("%.1f–%.1f", 100 * min, 100 * max), .groups = "keep")
+# Clean-up.
+rm(p, plt, breaks, labels)
