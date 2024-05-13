@@ -3,8 +3,8 @@ library("magrittr")
 library("purrr")
 library("tidyverse")
 
-rm(list = ls())
-gc()
+# rm(list = ls())
+# gc()
 
 load("Application/Data/Data.R")
 
@@ -185,7 +185,7 @@ run_experiments <- function(yvar, n_per_case_per_iter = 5, niter = 10, nreps = 5
 
 n_per_case_per_iter <- 1
 niter <- 46
-nreps <- 1
+nreps <- 500
 
 set.seed(34235) # For reproducibility.
 res1 <- run_experiments("impact_speed_reduction", n_per_case_per_iter, niter, nreps)

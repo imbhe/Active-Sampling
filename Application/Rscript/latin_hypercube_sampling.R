@@ -4,7 +4,7 @@ library("magrittr")
 library("MatchIt")
 library("tidyverse")
 
-rm(list = ls())
+# rm(list = ls())
 
 load("Application/Data/Data.R")
 
