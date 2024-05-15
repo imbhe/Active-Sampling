@@ -18,13 +18,13 @@
 #
 # OUTPUT:
 #
-# Replication of Figure 4 is saved under "Replication of main results" folder with name "Replication_95_coverage_plot.png".
+# Replication of Figure 4 is saved under "Replication of main results" folder with name "Replication_Figure4.png".
 #
 # SUMMARY
 #
 # This replication file first load data and all sampling method and parameter input and call active sampling method.
 # Then analyze based on the simulation results and produce and save the Figure4 under "Replication of main results" folder
-# with name "Replication_95_coverage_plot.png".
+# with name "Replication_Figure4.png".
 # The process bar with estimated time is printed when the simulations are running.
 ################################################################################
 

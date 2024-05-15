@@ -18,13 +18,13 @@
 #
 # OUTPUT:
 #
-# Replication of Figure5 is saved under "Replication of main results" folder with name "Replication_active_sampling_vs_importance_sampling.png".
+# Replication of Figure5 is saved under "Replication of main results" folder with name "Replication_Figure5.png".
 #
 # SUMMARY
 #
 # This replication file first load data and all sampling method and parameter input and call active sampling method.
 # Then analyze based on the simulation results and produce and save the Figure5 under "Replication of main results" folder
-# with name "Replication_active_sampling_vs_importance_sampling.png".
+# with name "Replication_Figure5.png".
 # The process bar with estimated time is printed when the simulations are running.
 ################################################################################
 
