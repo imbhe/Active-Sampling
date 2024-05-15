@@ -4,13 +4,7 @@
 # INPUT:
 #
 # data: input dataset with variables and data loaded by load("Application/Data/Data.R")
-#   - 'caseID': ID for original crash event. 
-#   - 'eoff': off-road glance duration.
-#   - 'acc': minimal acceleration during braking (negative maximal deceleration).
-#   - 'eoff_acc_prob': probability of (eoff, acc) pair according to baseline distribution.
-#   - 'impact_speed0': impact speed in baseline scenario.
-#   - 'impact_speed1': impact speed  in counter factual scenario (i.e., with counter measure such as AEB).
-#   - 'impact_speed_max0': maximal possible impact speed per caseID.
+#
 # load sampling method input and it is loaded by sampling_input <- read_excel("Application/Input/sampling_method_input_rmse_example.xlsx")
 #   - sampling_method: simple random sampling, importance sampling, or active sampling.
 #   - proposal_dist: proposal distribution for importance sampling. 
@@ -33,15 +27,16 @@
 # with name "Replication_active_sampling_vs_importance_sampling.png".
 # The process bar with estimated time is printed when the simulations are running.
 ################################################################################
-library("readxl")
+
 # source the sampling scripts
 source("Application/Rscript/active_sampling.R")
 source("Application/Rscript/load_required_packages.R")
 # List of packages required for the script
 required_packages <- c("ggplot2", "ggpubr", "scales", "dplyr","RColorBrewer","progress",
-                       "lhs","MatchIt")
+                       "lhs","MatchIt","readxl")
 # Load required packages
 load_required_packages(required_packages)
+library("readxl")
 # load the experiment data
 load("Application/Data/Data.R")
 # load which sampling methods to run
