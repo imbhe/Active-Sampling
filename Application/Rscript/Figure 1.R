@@ -1,18 +1,3 @@
-################################################################################
-#
-# File name: figures.R
-#
-# Author: Henrik Imberg
-#
-# Last edited: 2023-04-05
-#
-# Description: Generate Figure 1.
-# 
-# INPUT: Virtual simulation data stored in the Data folder.
-#
-# OUTPUT: is stored in the Figures folder.
-#
-################################################################################
 
 # Clean up. ----
 rm(list = ls())
@@ -21,9 +6,8 @@ cat("\14")
 
 # Load packages. ----
 
-library("cowplot")
-library("RColorBrewer")
-library("tidyverse")
+source("Application/Rscript/load_required_packages.R")
+load_required_packages(c("cowplot", "RColorBrewer", "tidyverse"))
 
 
 # ggplot theme. ----

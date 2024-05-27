@@ -1,14 +1,6 @@
-##################################################
-## Project: Active Sampling
-## Description: Replication of Figure 3. 
-## Date: 13 May 2024
-## Author: Henrik Imberg
-##################################################
 
-library("kernlab")
-library("magrittr")
-library("purrr")
-library("tidyverse")
+source("Application/Rscript/load_required_packages.R")
+load_required_packages(c("kernlab", "magrittr", "purrr", "tidyverse"))
 
 # rm(list = ls())
 # gc()

@@ -1,8 +1,6 @@
 
-library("lhs")
-library("magrittr")
-library("MatchIt")
-library("tidyverse")
+source("Application/Rscript/load_required_packages.R")
+load_required_packages(c("lhs", "magrittr", "MatchIt", "tidyverse"))
 
 # rm(list = ls())
 
