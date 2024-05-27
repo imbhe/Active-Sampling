@@ -4,6 +4,6 @@ Code used for the simulation experiments (Section 5) in the paper Active samplin
 
 Contents
 * Data: Simulated input data.
-* Rscript: R script for simulation experiments.
+* Rscript: R-script for simulation experiments.
 * Results: Result datasets generated from the simulations.
 * Figures: Final figures for the paper.
