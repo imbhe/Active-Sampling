@@ -1,20 +1,33 @@
 ##################################################
 ## Project: Active Sampling
-## Description: Simulate datasets
-## Date: 9 Jan 2024
+## Description: Simulate datasets for active sampling experiments on simulated data, Section 5 in the paper. 
+## Date: 13 May 2024
 ## Author: Henrik Imberg
 ##################################################
 
+
+# Initialize --------------------------------------------------------------
+
 # Clean-up.
+cat("\14")
 rm(list = ls())
 gc()
 
-# Load functions. 
-source("Simulation experiments/Rscript/functions.R")
+print("Running simulate_datasets.R")
 
-# Load packages
-library("MASS")
-library("stringr")
+
+# Load functions ----------------------------------------------------------
+
+source("Simulation experiments/Rscript/functions.R")
+source("Application/Rscript/load_required_packages.R")
+
+
+# Load packages -----------------------------------------------------------
+
+load_required_packages(c("MASS", "progress", "stringr"))
+
+
+# Simulate ----------------------------------------------------------------
 
 # Set parameters. 
 N <- 1e3
@@ -22,10 +35,18 @@ bandwidth <- c(0.1, 1, 10) # Linear, polynomial, or non-linear signal.
 r2 <- c(0.1, 0.5, 0.75, 0.9) # Very weak, moderate, strong, or very strong signal.
 normalization <- c("zero mean", "strictly positive")
 
+# Set up progress bar.
+pb <- progress_bar$new(format = "[:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
+                       total = length(bandwidth) * length(r2) * length(normalization),
+                       clear = FALSE)      
+
 # Simulate data. 
 for ( i in seq_along(bandwidth) ) {
   for ( j in seq_along(r2) ) {
     for ( k in seq_along(normalization) ) {
+      
+      # Update progress bar.
+      pb$tick()
       
       # Set seed, for reproducibility. 
       set.seed(1351)
@@ -50,3 +71,7 @@ for ( i in seq_along(bandwidth) ) {
     }
   }
 }
+
+rm(list = ls())
+
+print("Done!")

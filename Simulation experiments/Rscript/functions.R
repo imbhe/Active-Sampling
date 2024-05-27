@@ -1,15 +1,17 @@
 ##################################################
 ## Project: Active Sampling
-## Description: Functions for toy data example
-## Date: 11 Aug 2023
+## Description: Helper functions for active sampling experiments on simulated data, Section 5 in the paper. 
+## Date: 13 May 2024
 ## Author: Henrik Imberg
 ##################################################
+
 
 # To simulate data.
 sim_data <- function(N = 1e2, bandwidth = 0.1, r2 = 0.9, normalization = c("zero mean", "strictly positive")) {
   
   normalization <- match.arg(normalization)
 
+  # Transformations. 
   r <- sqrt(r2)
   z <- seq(1 / N, 1, length.out = N)
   K <- outer(z, z, function(x1, x2) exp(-(x1 -x2)^2 / bandwidth^2)) 
@@ -57,7 +59,9 @@ train <- function(data, method = c("const", "pps", "lm", "gam", "gbt", "gpr", "r
 
   return(mod)
 }
-safe_train <- function(...) { # Safe version.
+
+# Safe wrapper for train().
+safe_train <- function(...) { 
   safely(train, otherwise = NULL, quiet = TRUE)(...)[["result"]]
 }
 
@@ -107,7 +111,7 @@ get_rsquared <- function(object, data) {
   return(r2)
 }
 
-# Active sampling.
+# Active sampling algorithm.
 active_sampling <- function(data, # Input dataset. 
                             niter = 4, # Number of iterations. 
                             ninit = 25, # Initial sample size. 
@@ -117,6 +121,7 @@ active_sampling <- function(data, # Input dataset.
                             estimator = c("default", "Hajek"), # Estimator for the mean. Default (linear) or Hajek (non-linear) estimator. 
                             verbose = FALSE) {
   
+  # Set parameters. 
   N <- nrow(data)
   labelled <- NULL
   nseq <- c(ninit, rep(bsize, niter - 1))
@@ -128,6 +133,7 @@ active_sampling <- function(data, # Input dataset.
     sqerr_cv <- sqerr_ratio <- rep(NA, niter) # Squared errors of regression (control variate) and ratio estimators.
   }
   
+  # Iterate. 
   for ( i in 1:niter ) {
     
     if (verbose) cat(sprintf("Iteration %d.\n", i))
@@ -235,6 +241,7 @@ active_sampling <- function(data, # Input dataset.
     
   }
   
+  # Results. 
   res <- data.frame(n = cum_nseq, 
                     sqerr = sqerr)
   
@@ -245,5 +252,6 @@ active_sampling <- function(data, # Input dataset.
                       sqerr_ratio = sqerr_ratio)
   }
   
+  # Return. 
   return(res)
 }

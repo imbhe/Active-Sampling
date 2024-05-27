@@ -1,3 +1,10 @@
+##################################################
+## Project: Active Sampling
+## Description: Replication of Figure 3. 
+## Date: 13 May 2024
+## Author: Henrik Imberg
+##################################################
+
 library("kernlab")
 library("magrittr")
 library("purrr")

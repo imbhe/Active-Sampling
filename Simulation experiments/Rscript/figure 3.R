@@ -1,6 +1,6 @@
 ##################################################
 ## Project: Active Sampling
-## Description: Replication of Figure 3. 
+## Description: Simulation experiments for Figure 3. 
 ## Date: 13 May 2024
 ## Author: Henrik Imberg
 ##################################################
@@ -13,7 +13,7 @@ cat("\14")
 rm(list = ls())
 gc()
 
-print("Running replication simulation for Figure 3. Estimated computation time ~20 minutes.")
+print("Running simulation for Figure 3. Estimated computation time ~20 minutes.")
 
 
 # Load packages -----------------------------------------------------------
@@ -339,7 +339,7 @@ p <- plt %>%
 print(p)
 
 # Save.
-ggsave("Replication of main results/Replication of Figure 3.png", width = 160, height = 130, unit = "mm", dpi = 1000)
+ggsave("Simulation experiments/Figures/Figure 3.png", width = 160, height = 130, unit = "mm", dpi = 1000)
 
 # Clean-up.
 rm(p, plt, breaks, labels)

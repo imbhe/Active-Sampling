@@ -1,27 +1,30 @@
 ##################################################
 ## Project: Active Sampling
-## Description: Active sampling experiments on simulated data. 
-## Date: 9 Jan 2024
+## Description: Active sampling experiments on simulated data, Section 5 in the paper. 
+## Date: 13 May 2024
 ## Author: Henrik Imberg
 ##################################################
 
+
+# Initialize --------------------------------------------------------------
+
 # Clean-up.
+cat("\14")
 rm(list = ls())
 gc()
 
-
-# Load packages -----------------------------------------------------------
-
-library("kernlab")
-library("mboost")
-library("mgcv")
-library("ranger")
-library("tidyverse")
-
+print("Running experiments.R. Estimated computation time ~30 hours.")
 
 # Load functions ----------------------------------------------------------
 
 source("Simulation experiments/Rscript/functions.R")
+source("Application/Rscript/load_required_packages.R")
+
+
+# Load packages -----------------------------------------------------------
+
+load_required_packages(c("kernlab", "mboost", "mgcv", "progress", "ranger", 
+                         "TeachingDemos", "tidyverse"))
 
 
 # Active sampling ---------------------------------------------------------
@@ -58,8 +61,16 @@ params <- params1 %>%
 rm(nmax)
 
 
-# Experiments.
+# Set up progress bar.
+pb <- progress_bar$new(format = "[:bar] :percent [Elapsed time: :elapsedfull || Estimated time remaining: :eta]",
+                       total = nrow(params),
+                       clear = FALSE)      
+
+# Run experiments.
 for ( i in 1:nrow(params) ) {
+  
+  # Update progress bar.
+  pb$tick()
   
   # Extract bandwidth and R2 of true signal from filename. 
   file <- unlist(params$datafile[i])
@@ -68,7 +79,7 @@ for ( i in 1:nrow(params) ) {
   r2 <- as.numeric(splt[6]) + as.numeric(splt[7]) / 100 
   normalization <- sprintf("%s_%s", splt[8], splt[9])
   rm(splt, file)
-
+  
   # Load data.
   load(sprintf("Simulation experiments/Data/SimData_Bandwidth_%.2f_R2_%.2f_%s.RData", bandwidth, r2, normalization))
     
@@ -114,11 +125,14 @@ for ( i in 1:nrow(params) ) {
                 sd_mse = apply(sqerr, 2, sd), # Standard deviation of the MSE.
                 nreps = nreps) # Number of simulations/repetitions.
   
-  if ( params$model[i] == "const" ) {
+  # Control variates and ratio estimators.
+  if ( params$model[i] == "const" ) { 
     res$mse_cv <- apply(sqerr_cv, 2, mean)
     res$sd_mse_cv <- apply(sqerr_cv, 2, sd)
     res$mse_ratio <- apply(sqerr_ratio, 2, mean)
     res$sd_mse_ratio <- apply(sqerr_ratio, 2, sd)  
+    
+    rm(sqerr_cv, sqerr_ratio)
   }
   
   # Save. 
@@ -137,4 +151,6 @@ for ( i in 1:nrow(params) ) {
 }
 
 # Clean-up.
-rm(i, j, nreps, params, params1, params2, params3)
+rm(i, j, nreps, params, params1, params2, params3, pb)
+
+print("Done!")

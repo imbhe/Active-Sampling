@@ -64,17 +64,11 @@ active_sampling <- function(data,
   
   
   # Make sure packages are loaded. ----
-  require("boot")
-  require("caret")
-  require("magrittr")
-  require("ranger")
-  require("stringr")
-  require("tidyverse")
-  require("xgboost")
-  require("Matrix")
-  require("kernlab")
+  source("Application/Rscript/load_required_packages.R")
+  load_required_packages(c("boot", "caret", "magrittr", "ranger",
+                           "stringr", "tidyverse", "xgboost", "Matrix", "kernlab"))
   
-  
+
   # Check input parameters. ----
   
   sampling_method <- match.arg(sampling_method)

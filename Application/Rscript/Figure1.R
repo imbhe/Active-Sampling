@@ -6,7 +6,7 @@
 #
 # Last edited: 2023-04-05
 #
-# Description: Generate Figure S1 and S2 in Appendix B.
+# Description: Generate Figure 1.
 # 
 # INPUT: Virtual simulation data stored in the Data folder.
 #
@@ -104,4 +104,4 @@ fig2 <- ggplot(plt) +
 
 plot_grid(fig1, fig2, labels = c("A", "B"), label_size = ptsize)
 
-ggsave("Application/Figures/active sampling example.png", dpi = 1000, width = 159, height = 70, unit = "mm")
+ggsave("Application/Figures/Figure 1.png", dpi = 1000, width = 159, height = 70, unit = "mm")

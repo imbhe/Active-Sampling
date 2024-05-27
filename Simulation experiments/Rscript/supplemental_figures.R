@@ -1,24 +1,27 @@
 ##################################################
-## Project: Active Sampling
-## Description: Figures and illustrations for simulation experiments
-## Date: 9 Jan 2024
-## Author: Henrik Imberg
+# Project: Active Sampling
+# Description: Figures and illustrations for active sampling experiments on simulated data, Section 5 in the paper. 
+#              This script generates Figure 3 in the main paper and Figure S1–S6 in the supplement. 
+# Date: 9 Jan 2024
+# Author: Henrik Imberg
 ##################################################
 
+
+# Initialize --------------------------------------------------------------
+
 # Clean-up.
+cat("\14")
 rm(list = ls())
 gc()
 
 
 # Load packages -----------------------------------------------------------
 
-library("BSDA")
-library("magrittr")
-library("MASS")
-library("tidyverse")
+source("Application/Rscript/load_required_packages.R")
+load_required_packages(c("BSDA", "magrittr", "MASS", "tidyverse"))
 
 
-# Plot settings. ----------------------------------------------------------
+# Plot settings -----------------------------------------------------------
 
 ptsize <- 10
 theme_set(theme_bw()) 
@@ -47,13 +50,15 @@ update_geom_defaults("text", list(size = ptsize / .pt, family = "serif"))
 rm(ptsize)
 
 
+# Figure 2 ----------------------------------------------------------------
 
-# Plot examples of simulated datasets  ------------------------
-
+# Clean-up.
 rm(list = ls())
-params <- crossing(bandwidth = c(0.1, 1, 10),
-                   r2 = 0.75)
 
+# Initialize.
+params <- crossing(bandwidth = c(0.1, 1, 10), r2 = 0.75)
+
+# Load data. 
 for ( i in 1:nrow(params) ) {
   load(sprintf("Simulation experiments/Data/SimData_Bandwidth_%.2f_R2_%.2f_strictly_positive.RData", params$bandwidth[i], params$r2[i]))
 
@@ -69,6 +74,7 @@ for ( i in 1:nrow(params) ) {
   }
 }
 
+# Plot.
 p <- ggplot(plt, aes(x = z, y = y)) + 
   geom_point() + 
   facet_wrap(~bandwidth) + 
@@ -79,20 +85,22 @@ p <- ggplot(plt, aes(x = z, y = y)) +
                                                            `1` = "Polynomial  (σ = 1)",
                                                            `10` = "Linear (σ = 10)"))) 
 
+# Print.
 print(p)
 
-ggsave("Simulation experiments/Figures/example_simulated_data.png", width = 160, height = 60, unit = "mm", dpi = 1000)
+# Save.
+ggsave("Simulation experiments/Figures/Figure 2.png", width = 160, height = 60, unit = "mm", dpi = 1000)
 
+# Clean-up.
 rm(p)
 
 
-
-# All results, generalized additive model --------
+# Post-processing ---------------------------------------------------------
 
 # Clean-up.
 rm(list = ls())
 
-# Parameters. Make sure corresponding experiments have been executed. 
+# Experiment parameters. 
 params <- tibble(model = c("const", "pps", "lm", "gam", "rf", "gbt", "gpr")) %>% # Auxiliary models. 
   crossing(bandwidth = c(0.1, 1, 10),
            r2 = c(0.1, 0.5, 0.75, 0.9),
@@ -105,7 +113,7 @@ drop_rows <- NULL
 # Load results.
 for (i in 1:nrow(params) ) {
 
-  # Save. 
+  # Try load. 
   options(warn = -1)
   x <- try(load(file = sprintf("Simulation experiments/Results/Bandwidth_%s_R2_%s_%s_Model_%s_BatchSize_%s_Naive_%s_estimator_%s.RData", 
                                params$bandwidth[i],
@@ -118,12 +126,15 @@ for (i in 1:nrow(params) ) {
            silent = TRUE)
   options(warn = 0)
   
+  # If simulation corresponding to current parameter setting not run: 
+  # drop this row from params list.
   if ( class(x) == "try-error" ) {
     drop_rows <- c(drop_rows, i)
     rm(x)
     next
   }
   
+  # Additional estimators for SRS. 
   if ( params$model[i] == "const" ) {
     
     # Control variate estimator. 
@@ -138,6 +149,7 @@ for (i in 1:nrow(params) ) {
              mse = mse_ratio, 
              sd_mse = sd_mse_ratio)
     
+    # Append to results. 
     res %<>% 
       add_row(res_cv) %>% 
       add_row(res_ratio) %>% 
@@ -146,6 +158,7 @@ for (i in 1:nrow(params) ) {
     rm(res_cv, res_ratio)
   }
 
+  # Add 95% CI for RMSE.
   res %<>%
     mutate(mse_low = pmax(0, mse - 1.96 * sd_mse / sqrt(nreps)),
            mse_high = mse + 1.96 * sd_mse / sqrt(nreps),
@@ -154,6 +167,7 @@ for (i in 1:nrow(params) ) {
            rmse_high = sqrt(mse_high), 
            star = "")
   
+  # Append to results. 
   if ( i == 1) {
     allres <- res
   } else {
@@ -171,6 +185,7 @@ rm(i, drop_rows)
 for ( i in 1:nrow(params) ) {
   if ( !(params$model[i] %in% c("const", "pps", "cv", "ratio")) ) {
     
+    # Active sampling performance. 
     as <- allres %>%
       filter( model == params$model[i]
               & bsize == params$bsize[i]
@@ -180,19 +195,20 @@ for ( i in 1:nrow(params) ) {
               & normalization == params$normalization[i]
               & estimator == params$estimator[i])
     
+    # Simple random sampling performance. 
     ref <- allres %>%
       filter( model == "const"
-              # & bsize == params$bsize[i]
-              # & naive == params$naive[i]
               & bandwidth == params$bandwidth[i]
               & r2 == params$r2[i]
               & normalization == params$normalization[i]
               & estimator == params$estimator[i])
     
+    # To store results.     
     nseq <- sort(unique(as$n))
     nn <- length(nseq)
     p <- rep(NA, nn)
     
+    # Test if significant improvement with active sampling vs SRS.
     for ( j in 1:nn ) {
       
       x <- as[which(as$n == nseq[j]), ]
@@ -205,6 +221,7 @@ for ( i in 1:nrow(params) ) {
 
     }
     
+    # "Star" (asterisk) for significant improvement. 
     star <- rep("", nn)
     ix <- which(vapply(1:nn, function(ix) all(p[ix:nn] < 0.05), logical(1)))[1]
     star[ix] <- "*"
@@ -217,6 +234,7 @@ for ( i in 1:nrow(params) ) {
     n_as <- as_rmse$x[which(as_rmse$y < rmse_ref)[1]]
     sample_size_ratio[nn] <- n_as / n_ref
     
+    # Add to results. 
     allres[which(allres$model == params$model[i]
                  & allres$bsize == params$bsize[i]
                  & allres$naive == params$naive[i]
@@ -225,11 +243,13 @@ for ( i in 1:nrow(params) ) {
                  & allres$normalization == params$normalization[i]
                  & allres$estimator == params$estimator[i]), c("star", "sample_size_ratio")] <- data.frame(star, sample_size_ratio)
         
+    # Clean-up.
     rm(list = setdiff(ls(), c("allres", "params")))
   }
 }
 rm(params)
 
+# For nice display of R2 in figures. 
 allres$r2lab = allres$r2
 allres$r2lab <- as.factor(allres$r2lab)
 levels(allres$r2lab) <- c(expression(paste("R"^2, " = 0.10")), 
@@ -238,8 +258,9 @@ levels(allres$r2lab) <- c(expression(paste("R"^2, " = 0.10")),
                           expression(paste("R"^2, " = 0.90")))
 
 
-# Plot results.
-plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars) {
+# Supplemental Figure S1 and S3-S6 ----------------------------------------
+
+plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars, figname) {
 
   plt <- allres
   
@@ -272,42 +293,36 @@ plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars) {
          fill = NULL,
          linetype = NULL) 
   
-  # print(p)
+  print(p)
   
-  ggsave(sprintf("Simulation experiments/Figures/Results_Naive_%s_Batchsize_%s_Estimator_%s_Normalization_%s.png", 
-                 naive_, bsize_, estimator_, normalization_), 
+  ggsave(sprintf("Simulation experiments/Figures/%s.png", figname), 
          width = 160, height = 130, unit = "mm", dpi = 1000)
   
   rm(p, plt)
 }
 
+# Set breaks and labels. 
 breaks <- c("const", "cv", "ratio", "pps", "lm", "gam", "gbt", "gpr", "rf")
 labels <- c("Simple random sampling", "Control variates", "Ratio estimator", "Importance sampling", "Active sampling+LM", "Active sampling+GAM", "Active sampling+GBT", "Active sampling+GPR", "Active sampling+RF")
 
-# There was a substantial performance gain with active sampling already at small samples.
-# The performance gain increased with the signal-to-noise ratio. 
-# In the linear case (y_i linearly related to z_i) there was a slight loss of efficiency 
-# when applying flexible surrogate model, as compared to a linear model. 
-# Importantly, the performance of active sampling was never worse than simple random sampling, 
-# even for a misspecified model. 
-plot_this(10, FALSE, "default", "strictly_positive", TRUE) 
+# All ML models.  
+plot_this(50, FALSE, "default", "strictly_positive", FALSE, "Figure S1")
 
-# The performance gain was somewhat smaller and when the study variable attained 
-# both positive and negative values and when a non-linear estimator was used. 
-plot_this(10, FALSE, "default", "zero_mean", TRUE) 
-plot_this(10, FALSE, "Hajek", "zero_mean", TRUE) 
+# Linear (default) and non-linear estimator. 
+plot_this(10, FALSE, estimator_ = "default", "zero_mean", TRUE, "Figure S3") 
+plot_this(10, FALSE, estimator_ = "Hajek", "zero_mean", TRUE, "Figure S4") 
 
-# Similar results were observed also for other machine learning algorithms. 
-plot_this(50, FALSE, "default", "strictly_positive", FALSE)
+# Naive active sampling (ignoring prediction uncertainty).
+plot_this(10, naive = TRUE, "default", "strictly_positive", FALSE, "Figure S5") 
+plot_this(10, naive = TRUE, "Hajek", "zero_mean", FALSE, "Figure S6")  
 
-# In contrast, a naive implementation of the active sampling algorithm resulted in worse performance 
-# compared to simple random sampling, particularly in low signal-to-noise ratio settings, 
-# non-positive data, and for misspecified models.  
-plot_this(10, TRUE, "Hajek", "zero_mean", FALSE)  
-plot_this(10, TRUE, "default", "strictly_positive", FALSE) 
+# Clean-up.
+rm(breaks, labels)
 
-# Effect of batch size on performance. 
-plot_this <- function(naive_, estimator_, normalization_, model_) {
+
+# Supplemental Figure S2 --------------------------------------------------
+
+plot_this <- function(naive_, estimator_, normalization_, model_, figname) {
   
   p <- allres %>% 
     filter(naive == naive_ & estimator == estimator_ & normalization == normalization_ & (model == model_ | (model == "const" & bsize == 10))) %>% 
@@ -330,28 +345,35 @@ plot_this <- function(naive_, estimator_, normalization_, model_) {
          fill = NULL,
          linetype = NULL) 
   
-  # print(p)
+  print(p)
   
-  ggsave(sprintf("Simulation experiments/Figures/Results_Naive_%s_Estimator_%s_Normalization_%s_Model_%s.png", 
-                 naive_, estimator_, normalization_, model_), 
+  ggsave(sprintf("Simulation experiments/Figures/%s.png", figname), 
          width = 160, height = 130, unit = "mm", dpi = 1000)
   
   rm(p)
 }
 
+# Set breaks and labels. 
 breaks <- c("const 10", "gam 10", "gam 50")
 labels <- c("Simple random sampling", "AS, batch size = 10", "AS, batch size = 50")
 
-# Better performance was observed with a small batch size but difference were 
-# attenuated as the sample size increased.  
-plot_this(FALSE, "default", "strictly_positive", "gam")
+# Effect of batch size on performance. 
+plot_this(FALSE, "default", "strictly_positive", "gam", "Figure S2")
 
+# Clean-up.
 rm(breaks, labels)
 
-# Sample size reductions.
+
+# Sample size reductions --------------------------------------------------
+
 allres %>% 
   filter(model == "gam" & n == 250 & bsize == 10 & !naive & r2 >= 0.5) %>% 
   group_by(normalization, estimator) %>% 
   summarize(min = 1 - max(sample_size_ratio, na.rm = TRUE),
             max = 1 - min(sample_size_ratio, na.rm = TRUE),
             range = sprintf("%.1f–%.1f", 100 * min, 100 * max), .groups = "keep")
+
+
+# Clean-up ----------------------------------------------------------------
+
+rm(list = ls())
