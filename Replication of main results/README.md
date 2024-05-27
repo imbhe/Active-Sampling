@@ -2,10 +2,8 @@
 
 Code used for replication of main results in the paper Active sampling: A machine-learning-assisted framework for finite population inference with optimal subsamples by Henrik Imberg, Xiaomi Yang, Carol Flannagan and Jonas Bärgman.
 
-Make sure that the boot, caret, magrittr, ranger, stringr and tidyverse packages are installed before running the code. 
+Each script in this folder will execute the corresponding simulations for replication of Figure 3, 4 and 5 in the paper. The output will be saved in the current folder as "Replication of Figure X.png".
 
-Run "Replication of Figure4" and it takes around 15 hours to finish. When it finish, the figure4 in the paper would be replicated
-under "Replication of main results" folder with name "Replication_Figure4.png".
-
-Run "Replication of Figure5" and it takes around 2 days to finish. When it finish, the figure5 in the paper would be replicated
-under "Replication of main results" folder with name "Replication_Figure5.png".
+* Replication of Figure 3 takes about 30 minutes to run.
+* Replication of Figure 4 takes about 15 hours to run.
+* Replication of Figure 5 takes about 2 days to run.
