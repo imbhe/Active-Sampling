@@ -18,9 +18,9 @@ load_required_packages(required_packages)
 
 source("Application/Rscript/CI_calculation.R")
 
-cb_palette = c("#666666","#E7298A", "#1B9E77","#E6AB02",  "#A6761D","#6BAED6","#7570B3","#D95F02" )
+cb_palette = c("#666666","#E7298A", "#1B9E77","#E6AB02",  "#6BAED6","#A6761D","#7570B3","#D95F02" )
 
-load("Application/Results/RMSE_check_20240405.R")
+load("Application/Results/result_500repetitions_eRMSE.R")
 
 simlist = list()
 for (i in 1:length(res_total[[1]])) {
@@ -172,8 +172,8 @@ ci_df <- ci_df %>% add_row(
              "Density importance sampling",
              "Severity importance sampling",
              "Latin hypercube sampling",
-             "Gaussian process active learning",
              "Leverage sampling",
+             "Gaussian process active learning",
              "Active sampling, target = mean impact speed reduction",
              "Active sampling, target = crash avoidance rate")
   ci_df$new_group <- factor(ci_df$new_group, levels = 

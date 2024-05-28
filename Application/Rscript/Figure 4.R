@@ -24,7 +24,7 @@ set.seed(seed_number)
 cb_palette <- sample(load_color)
 
 # Load the result
-load("Application/Results/Coverage_check_20240405.R")
+load("Application/Results/result_500repetitions_coverage.R")
 simlist = list()
 for (i in 1:length(res_total[[1]])) {
   sim <- res_total[[1]][[i]]$res

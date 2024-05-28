@@ -88,7 +88,7 @@ source("Application/Rscript/latin_hypercube_sampling.R")
 lhs <- res
 source("Application/Rscript/gaussian_process_active_learning.R")
 gpr <- res
-cb_palette = c("#666666","#E7298A", "#1B9E77","#E6AB02",  "#A6761D","#6BAED6","#7570B3","#D95F02" )
+cb_palette = c("#666666","#E7298A", "#1B9E77","#E6AB02", "#6BAED6", "#A6761D","#7570B3","#D95F02" )
 simlist = list()
 for (i in 1:length(res_total[[1]])) {
   sim <- res_total[[1]][[i]]$res
@@ -223,8 +223,8 @@ groups = c("Simple random sampling",
            "Density importance sampling",
            "Severity importance sampling",
            "Latin hypercube sampling",
-           "Gaussian process active learning",
            "Leverage sampling",
+           "Gaussian process active learning",
            "Active sampling, target = mean impact speed reduction",
            "Active sampling, target = crash avoidance rate")
 ci_df$new_group <- factor(ci_df$new_group, levels = 
@@ -234,13 +234,13 @@ indices = c()
 for(i in unique(ci_df %>% filter (new_group =="Gaussian process active learning") %>%
                 pull(iter)*10)) {
   if(i<=2000){
-  indices[i] = ci_df %>% filter (new_group =="Active sampling, target = crash avoidance rate"&
-                                   iter == round(i/10)) %>%
-    pull(crash_avoidance_upper_ci) <
-    ci_df %>% filter (new_group =="Gaussian process active learning"&
-                        iter == (i/10)) %>%
-    pull(crash_avoidance_lower_ci)
-}
+    indices[i] = ci_df %>% filter (new_group =="Active sampling, target = crash avoidance rate"&
+                                     iter == round(i/10)) %>%
+      pull(crash_avoidance_upper_ci) <
+      ci_df %>% filter (new_group =="Gaussian process active learning"&
+                          iter == (i/10)) %>%
+      pull(crash_avoidance_lower_ci)
+  }
 }
 significance_star[2] = which(indices == TRUE)[1]
 ptsize <- 10
