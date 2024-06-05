@@ -13,7 +13,7 @@ cat("\14")
 rm(list = ls())
 gc()
 
-print("Running simulation for Figure 3. Estimated computation time ~20 minutes.")
+print("Running simulation for Figure 3. Estimated computation time 20–60 minutes.")
 
 
 # Load packages -----------------------------------------------------------
@@ -306,6 +306,13 @@ levels(allres$r2lab) <- c(expression(paste("R"^2, " = 0.10")),
                           expression(paste("R"^2, " = 0.75")),
                           expression(paste("R"^2, " = 0.90")))
 
+# For nice display of sigma in figures. 
+allres$sigma = allres$bandwidth
+allres$sigma <- as.factor(allres$sigma)
+levels(allres$sigma) <- c(expression(paste(sigma, " = 0.1")), 
+                          expression(paste(sigma, " = 1")), 
+                          expression(paste(sigma, " = 10")))
+
 # Breaks and labels. 
 breaks <- c("const", "cv", "ratio", "pps", "lm", "gam", "gbt", "gpr", "rf")
 labels <- c("Simple random sampling", "Control variates", "Ratio estimator", "Importance sampling", "Active sampling+LM", "Active sampling+GAM", "Active sampling+GBT", "Active sampling+GPR", "Active sampling+RF")
@@ -326,10 +333,7 @@ p <- plt %>%
   scale_fill_brewer(palette = "Dark2", breaks = breaks, label = labels) +
   scale_linetype_discrete(breaks = breaks, label = labels) +
   scale_y_continuous(trans = "log10") +
-  facet_grid(r2lab~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
-                                                                `1` = "σ = 1", 
-                                                                `10` = "σ = 10"),
-                                                  r2lab = label_parsed)) +
+  facet_grid(r2lab~sigma, labeller = label_parsed) +
   labs(x = "Sample size",
        y = "eRMSE",
        colour = NULL,

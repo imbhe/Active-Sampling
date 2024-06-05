@@ -2,7 +2,7 @@
 # Project: Active Sampling
 # Description: Figures and illustrations for active sampling experiments on simulated data, Section 5 in the paper. 
 #              This script generates Supplemental Figure S1–S6. 
-# Date: 27 May 2024
+# Date: 5 June 2024
 # Author: Henrik Imberg
 ##################################################
 

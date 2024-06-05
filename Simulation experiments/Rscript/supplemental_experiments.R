@@ -1,7 +1,7 @@
 ##################################################
 ## Project: Active Sampling
 ## Description: Active sampling experiments on simulated data, Section 5 in the paper. 
-## Date: 13 May 2024
+## Date: 5 June May 2024
 ## Author: Henrik Imberg
 ##################################################
 
@@ -13,7 +13,7 @@ cat("\14")
 rm(list = ls())
 gc()
 
-print("Running supplemental_experiments.R. Estimated computation time ~30 hours.")
+print("Running supplemental_experiments.R. Estimated computation time 30–60 hours.")
 
 # Load functions ----------------------------------------------------------
 
