@@ -13,7 +13,7 @@ cat("\14")
 rm(list = ls())
 gc()
 
-print("Running experiments.R. Estimated computation time ~30 hours.")
+print("Running supplemental_experiments.R. Estimated computation time ~30 hours.")
 
 # Load functions ----------------------------------------------------------
 

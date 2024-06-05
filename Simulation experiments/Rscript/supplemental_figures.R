@@ -50,51 +50,6 @@ update_geom_defaults("text", list(size = ptsize / .pt, family = "serif"))
 rm(ptsize)
 
 
-# Figure 2 ----------------------------------------------------------------
-
-# Clean-up.
-rm(list = ls())
-
-# Initialize.
-params <- crossing(bandwidth = c(0.1, 1, 10), r2 = 0.75)
-
-# Load data. 
-for ( i in 1:nrow(params) ) {
-  load(sprintf("Simulation experiments/Data/SimData_Bandwidth_%.2f_R2_%.2f_strictly_positive.RData", params$bandwidth[i], params$r2[i]))
-
-  dta <- dta[seq(1, 1000, 10), ] %>% 
-    mutate(bandwidth = params$bandwidth[i],
-           r2 = params$r2[i])
-  
-  if (i == 1) {
-    plt <- dta
-  } else {
-    plt %<>% 
-      add_row(dta)
-  }
-}
-
-# Plot.
-p <- ggplot(plt, aes(x = z, y = y)) + 
-  geom_point() + 
-  facet_wrap(~bandwidth) + 
-  expand_limits(y = 0) +
-  scale_x_continuous(breaks = c(0, 0.5, 1)) + 
-  scale_y_continuous(breaks = c(0, 2.5, 5)) + 
-  facet_wrap(~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "Non-linear (σ = 0.1)",
-                                                           `1` = "Polynomial  (σ = 1)",
-                                                           `10` = "Linear (σ = 10)"))) 
-
-# Print.
-print(p)
-
-# Save.
-ggsave("Simulation experiments/Figures/Figure 2.png", width = 160, height = 60, unit = "mm", dpi = 1000)
-
-# Clean-up.
-rm(p)
-
-
 # Post-processing ---------------------------------------------------------
 
 # Clean-up.
@@ -258,6 +213,14 @@ levels(allres$r2lab) <- c(expression(paste("R"^2, " = 0.10")),
                           expression(paste("R"^2, " = 0.90")))
 
 
+# For nice display of sigma in figures. 
+allres$sigma = allres$bandwidth
+allres$sigma <- as.factor(allres$sigma)
+levels(allres$sigma) <- c(expression(paste(sigma, " = 0.1")), 
+                          expression(paste(sigma, " = 1")), 
+                          expression(paste(sigma, " = 10")))
+
+
 # Supplemental Figure S1 and S3-S6 ----------------------------------------
 
 plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars, figname) {
@@ -283,10 +246,7 @@ plot_this <- function(bsize_, naive_, estimator_, normalization_, show_stars, fi
     scale_fill_brewer(palette = "Dark2", breaks = breaks, label = labels) +
     scale_linetype_discrete(breaks = breaks, label = labels) +
     scale_y_continuous(trans = "log10") +
-    facet_grid(r2lab~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
-                                                                  `1` = "σ = 1", 
-                                                                  `10` = "σ = 10"),
-                                                    r2lab = label_parsed)) +
+    facet_grid(r2lab~sigma, labeller = label_parsed) +
     labs(x = "Sample size",
          y = "eRMSE",
          colour = NULL,
@@ -335,10 +295,7 @@ plot_this <- function(naive_, estimator_, normalization_, model_, figname) {
     scale_fill_brewer(palette = "Dark2", breaks = breaks, label = labels) +
     scale_linetype_discrete(breaks = breaks, label = labels) +
     scale_y_continuous(trans = "log10") +
-    facet_grid(r2lab~bandwidth, labeller = labeller(bandwidth = c(`0.1` = "σ = 0.1", 
-                                                                  `1` = "σ = 1", 
-                                                                  `10` = "σ = 10"),
-                                                    r2lab = label_parsed)) +
+    facet_grid(r2lab~sigma, labeller = label_parsed) +
     labs(x = "Sample size",
          y = "eRMSE",
          colour = NULL,
@@ -376,4 +333,4 @@ allres %>%
 
 # Clean-up ----------------------------------------------------------------
 
-rm(list = ls())
+# rm(list = ls())
